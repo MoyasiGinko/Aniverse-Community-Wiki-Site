@@ -1,5 +1,7 @@
+"use client";
+
 import React, { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchGenreData } from '../redux/features/Genres/genreSlice';
 
@@ -32,18 +34,22 @@ const GenreList = () => {
   }
 
   return (
-    <div className="genre-list">
-      <h1>Genre List</h1>
-      <ul className="menu">
+    <main className="page-shell">
+      <div className="section-header">
+        <h1>Genre Atlas</h1>
+        <p>Jump into thematic worlds and discover connected titles.</p>
+      </div>
+      <ul className="genre-grid">
         {genreData.map((genre) => (
-          <li key={genre.mal_id} className="menu-item">
-            <Link to={`/genres/${genre.mal_id}`} className="menu-link">
-              {genre.name}
+          <li key={genre.mal_id}>
+            <Link href={`/genres/${genre.mal_id}`} className="genre-chip">
+              <span>{genre.name}</span>
+              <small>Open collection</small>
             </Link>
           </li>
         ))}
       </ul>
-    </div>
+    </main>
   );
 };
 

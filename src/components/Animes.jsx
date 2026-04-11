@@ -1,8 +1,12 @@
+"use client";
+
 import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
+import Image from 'next/image';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchAnimes,
+  fetchWatchlist,
   reserveAnime,
   cancelReservation,
   fetchNextPage,
@@ -13,13 +17,14 @@ import {
 const Animes = () => {
   const dispatch = useDispatch();
   const {
-    animes, currentPage, status, error,
+    animes, watchlistIds, currentPage, status, error,
   } = useSelector(
     (state) => state.animes,
   );
 
   useEffect(() => {
     dispatch(fetchAnimes(currentPage));
+    dispatch(fetchWatchlist());
   }, [dispatch, currentPage]);
 
   if (status === 'loading') {
@@ -35,8 +40,12 @@ const Animes = () => {
     );
   }
 
-  const handleReserveAnime = (animeId) => {
-    dispatch(reserveAnime(animeId));
+  const handleReserveAnime = (anime) => {
+    dispatch(reserveAnime({
+      animeId: anime.mal_id,
+      title: anime.title,
+      imageUrl: anime.images?.jpg?.image_url,
+    }));
   };
 
   const handleCancelReservation = (animeId) => {
@@ -44,9 +53,7 @@ const Animes = () => {
   };
 
   const getReservationStatus = (animeId) => {
-    const reserved = localStorage.getItem(`reserved_${animeId}`);
-    console.log(`reserved_${animeId}:`, reserved);
-    return reserved === 'true';
+    return watchlistIds.includes(String(animeId));
   };
 
   const handleNextPage = () => {
@@ -62,53 +69,51 @@ const Animes = () => {
   };
 
   return (
-    <div className="all-animes">
-      {animes.map((anime) => (
-        <div className="anime-card2" key={anime.mal_id}>
-          <img
-            className="animeImage"
-            src={anime.images?.jpg?.image_url}
-            alt={anime.title}
-          />
-          <div className="anime-title">
-            <h2 key={anime.mal_id}>
-              <Link to={`/anime/${anime.mal_id}`}>{anime.title}</Link>
-            </h2>
-          </div>
-          <div className="anime-content">
-            <div className="anime-description">
-              <p>
-                Episodes:
-                {anime.episodes}
-              </p>
-            </div>
+    <main className="page-shell">
+      <div className="section-header">
+        <h1>Anime Library</h1>
+        <p>Page {currentPage}</p>
+      </div>
+
+      <div className="media-grid">
+        {animes.map((anime) => (
+          <article className="media-card" key={anime.mal_id}>
+            <Link href={`/anime/${anime.mal_id}`}>
+              <Image
+                className="animeImage"
+                src={anime.images?.jpg?.image_url}
+                alt={anime.title}
+                width={240}
+                height={330}
+              />
+              <h3>{anime.title}</h3>
+            </Link>
+            <p className="meta-line">Episodes: {anime.episodes || 'N/A'}</p>
             {getReservationStatus(anime.mal_id) ? (
-              <>
-                <button
-                  type="button"
-                  className="anime-cancel-btn"
-                  onClick={() => handleCancelReservation(anime.mal_id)}
-                >
-                  Remove from List
-                </button>
-                <span className="anime-reserved">Added successfully</span>
-              </>
+              <button
+                type="button"
+                className="anime-cancel-btn"
+                onClick={() => handleCancelReservation(anime.mal_id)}
+              >
+                Remove from Watchlist
+              </button>
             ) : (
               <button
                 type="button"
                 className="anime-reserve-btn"
                 data-testid="cancel-reservation-button"
-                onClick={() => handleReserveAnime(anime.mal_id)}
+                onClick={() => handleReserveAnime(anime)}
               >
-                Add to List
+                Add to Watchlist
               </button>
             )}
-          </div>
-        </div>
-      ))}
+          </article>
+        ))}
+      </div>
+
       <div className="pagination-buttons">
         <button type="button" onClick={handleFirstPage}>
-          Go to Page 1
+          First
         </button>
         <button
           type="button"
@@ -122,7 +127,7 @@ const Animes = () => {
           Next
         </button>
       </div>
-    </div>
+    </main>
   );
 };
 

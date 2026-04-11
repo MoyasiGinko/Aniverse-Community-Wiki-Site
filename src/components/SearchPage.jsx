@@ -1,5 +1,8 @@
+"use client";
+
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
+import Image from 'next/image';
 
 const AnimeSearchPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -49,9 +52,12 @@ const AnimeSearchPage = () => {
   };
 
   return (
-    <div className="anime-search-page">
-      <h2>Anime Search</h2>
-      <div>
+    <main className="page-shell">
+      <div className="section-header">
+        <h1>Search Anime</h1>
+        <p>Find titles instantly and jump into details.</p>
+      </div>
+      <div className="search-panel">
         <input
           type="text"
           value={searchQuery}
@@ -63,22 +69,21 @@ const AnimeSearchPage = () => {
           Search
         </button>
       </div>
-      <div className="search-results">
+      <div className="search-results section-block">
         {searchQuery.trim() !== '' && searchResults.length > 0 ? (
-          <ul className="anime-list">
+          <ul className="media-grid compact">
             {searchResults.map((anime) => (
-              <li key={anime.mal_id}>
-                <img src={anime.images?.jpg?.image_url} alt={anime.title} />
-                <h3 key={anime.mal_id}>
-                  <Link to={`/anime/${anime.mal_id}`}>{anime.title}</Link>
+              <li key={anime.mal_id} className="media-card">
+                <Image src={anime.images?.jpg?.image_url || ''} alt={anime.title} width={180} height={260} />
+                <h3>
+                  <Link href={`/anime/${anime.mal_id}`}>{anime.title}</Link>
                 </h3>
-                {/* Render additional anime details as needed */}
               </li>
             ))}
           </ul>
-        ) : null}
+        ) : <p>Start typing to discover anime.</p>}
       </div>
-    </div>
+    </main>
   );
 };
 

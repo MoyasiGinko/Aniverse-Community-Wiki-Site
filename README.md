@@ -118,7 +118,14 @@ To run the project, execute the following command:
 
 
 ```sh
-npm start
+npm run dev
+```
+
+For a production build:
+
+```sh
+npm run build
+npm run start
 ```
 
 ### Run tests

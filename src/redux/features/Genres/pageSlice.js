@@ -1,6 +1,10 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
 const getStoredAnimeData = () => {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
   const storedAnimeData = localStorage.getItem('animeData');
   return storedAnimeData ? JSON.parse(storedAnimeData) : [];
 };

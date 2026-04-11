@@ -17,10 +17,14 @@ export const fetchAnimes = createAsyncThunk(
 
 export const reserveAnime = createAsyncThunk(
   'animes/reserveAnime',
-  async (animeId) => {
+  async ({ animeId, title, imageUrl }) => {
     try {
-      localStorage.setItem(`reserved_${animeId}`, 'true');
-      return animeId;
+      await fetch('/api/watchlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ animeId: String(animeId), title, imageUrl }),
+      });
+      return String(animeId);
     } catch (error) {
       throw new Error('Failed to reserve anime');
     }
@@ -31,11 +35,25 @@ export const cancelReservation = createAsyncThunk(
   'animes/cancelReservation',
   async (animeId) => {
     try {
-      localStorage.removeItem(`reserved_${animeId}`);
-      return animeId;
+      await fetch(`/api/watchlist?animeId=${encodeURIComponent(String(animeId))}`, {
+        method: 'DELETE',
+      });
+      return String(animeId);
     } catch (error) {
       throw new Error('Failed to cancel reservation');
     }
+  },
+);
+
+export const fetchWatchlist = createAsyncThunk(
+  'animes/fetchWatchlist',
+  async () => {
+    const response = await fetch('/api/watchlist');
+    if (!response.ok) {
+      return [];
+    }
+    const data = await response.json();
+    return (data.items || []).map((entry) => String(entry.animeId));
   },
 );
 
@@ -62,6 +80,7 @@ export const fetchFirstPage = createAsyncThunk(
 
 const initialState = {
   animes: [],
+  watchlistIds: [],
   currentPage: 1,
   status: 'idle',
   error: null,
@@ -87,13 +106,16 @@ const animesSlice = createSlice({
       })
       .addCase(reserveAnime.fulfilled, (state, action) => {
         const animeId = action.payload;
-        state.animes = state.animes.map((anime) => (anime.id === animeId
-          ? { ...anime, reserved: true } : anime));
+        if (!state.watchlistIds.includes(animeId)) {
+          state.watchlistIds.push(animeId);
+        }
       })
       .addCase(cancelReservation.fulfilled, (state, action) => {
         const animeId = action.payload;
-        state.animes = state.animes.map((anime) => (anime.id === animeId
-          ? { ...anime, reserved: false } : anime));
+        state.watchlistIds = state.watchlistIds.filter((id) => id !== animeId);
+      })
+      .addCase(fetchWatchlist.fulfilled, (state, action) => {
+        state.watchlistIds = action.payload;
       })
       .addCase(fetchNextPage.fulfilled, (state, action) => {
         state.currentPage = action.payload;

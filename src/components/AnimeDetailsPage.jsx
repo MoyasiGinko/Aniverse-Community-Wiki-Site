@@ -1,10 +1,11 @@
+"use client";
+
 import React, { useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import Image from 'next/image';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchDetails } from '../redux/features/Details/detailsSlice';
 
-const AnimeDetailsPage = () => {
-  const { animeId } = useParams();
+const AnimeDetailsPage = ({ animeId }) => {
   const dispatch = useDispatch();
   const { data, isLoading, error } = useSelector((state) => state.details);
 
@@ -54,59 +55,35 @@ const AnimeDetailsPage = () => {
   } = data;
 
   return (
-    <div className="anime-details-page">
-      <h1>{title}</h1>
-      <div className="anime-image">
-        <img src={images?.jpg?.image_url} alt={title} />
-      </div>
-      <div className="details">
-        <h2>Synopsis</h2>
-        <p>{synopsis}</p>
-        <div>
-          <h2>Details</h2>
-          <table>
-            <tbody>
-              <tr>
-                <th>Episodes:</th>
-                <td>{episodes}</td>
-              </tr>
-              <tr>
-                <th>Aired:</th>
-                <td>{aired.string}</td>
-              </tr>
-              <tr>
-                <th>Rating:</th>
-                <td>{rating}</td>
-              </tr>
-              <tr>
-                <th>Score:</th>
-                <td>{score}</td>
-              </tr>
-              <tr>
-                <th>Popularity:</th>
-                <td>{popularity}</td>
-              </tr>
-            </tbody>
-          </table>
+    <main className="page-shell">
+      <section className="detail-hero">
+        <div className="detail-media">
+          <Image src={images?.jpg?.image_url || ''} alt={title} width={320} height={460} />
         </div>
-        <div>
-          <h2>Genres</h2>
-          <ul>
+        <div className="detail-copy">
+          <h1>{title}</h1>
+          <p>{synopsis}</p>
+          <div className="stats-grid">
+            <div><span>Episodes</span><strong>{episodes || 'N/A'}</strong></div>
+            <div><span>Aired</span><strong>{aired?.string || 'N/A'}</strong></div>
+            <div><span>Rating</span><strong>{rating || 'N/A'}</strong></div>
+            <div><span>Score</span><strong>{score || 'N/A'}</strong></div>
+            <div><span>Popularity</span><strong>{popularity || 'N/A'}</strong></div>
+          </div>
+          <div className="pill-list">
             {genres.map((genre) => (
-              <li key={genre.mal_id}>{genre.name}</li>
+              <span key={genre.mal_id} className="badge-pill">{genre.name}</span>
             ))}
-          </ul>
-        </div>
-        <div>
-          <h2>Studios</h2>
-          <ul>
+          </div>
+          <div className="pill-list">
             {studios.map((studio) => (
-              <li key={studio.mal_id}>{studio.name}</li>
+              <span key={studio.mal_id} className="badge-pill">{studio.name}</span>
             ))}
-          </ul>
+          </div>
         </div>
       </div>
-    </div>
+      </section>
+    </main>
   );
 };
 

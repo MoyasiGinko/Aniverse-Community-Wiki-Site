@@ -1,32 +1,36 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+"use client";
+
+import React, { useEffect } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchDetails } from '../redux/features/Details/detailsSlice';
 import {
+  fetchWatchlist,
   reserveAnime,
   cancelReservation,
 } from '../redux/features/Animes/animesSlice';
 
-const DetailsPage = () => {
-  const { animeId } = useParams();
+const DetailsPage = ({ animeId }) => {
   const dispatch = useDispatch();
   const { data, isLoading, error } = useSelector((state) => state.details);
-  const [isReserved, setReserved] = useState(
-    localStorage.getItem(`reserved_${animeId}`) === 'true',
-  );
+  const isReserved = useSelector((state) => state.animes.watchlistIds.includes(String(animeId)));
 
   useEffect(() => {
+    dispatch(fetchWatchlist());
     dispatch(fetchDetails(animeId));
   }, [dispatch, animeId]);
 
   const handleReserveAnime = () => {
-    dispatch(reserveAnime(animeId));
-    setReserved(true);
+    dispatch(reserveAnime({
+      animeId,
+      title: data?.title || 'Untitled',
+      imageUrl: data?.images?.jpg?.image_url || '',
+    }));
   };
 
   const handleCancelReservation = () => {
     dispatch(cancelReservation(animeId));
-    setReserved(false);
   };
 
   if (isLoading) {
@@ -49,51 +53,37 @@ const DetailsPage = () => {
   const { title, images, synopsis } = data;
 
   return (
-    <div className="details-page">
-      <div className="details-container">
-        <div className="details-header">
-          <h1 className="details-title">{title}</h1>
+    <main className="page-shell">
+      <section className="detail-hero">
+        <div className="detail-media">
+          <Image src={images?.jpg?.image_url || ''} alt={title} width={320} height={460} />
         </div>
-        <div className="details-content">
-          <div className="details-image">
-            <img src={images?.jpg?.image_url} alt={title} />
-          </div>
-          <div className="details-info">
-            <div className="details-synopsis">
-              <h2>Synopsis</h2>
-              <p>{synopsis}</p>
-            </div>
-            <div className="details-actions">
-              <div className="details-link">
-                <Link to={`/anime/${animeId}/details`}>See more details</Link>
-              </div>
-              <div className="details-reservation">
-                {isReserved ? (
-                  <>
-                    <span className="details-reserved">Added successfully</span>
-                    <button
-                      type="button"
-                      className="details-cancel-btn"
-                      onClick={handleCancelReservation}
-                    >
-                      Remove from List
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    className="details-reserve-btn"
-                    onClick={handleReserveAnime}
-                  >
-                    Add to List
-                  </button>
-                )}
-              </div>
-            </div>
+        <div className="detail-copy">
+          <h1>{title}</h1>
+          <p>{synopsis}</p>
+          <div className="inline-actions">
+            <Link href={`/anime/${animeId}/details`} className="action-button ghost">Full Details</Link>
+            {isReserved ? (
+              <button
+                type="button"
+                className="anime-cancel-btn"
+                onClick={handleCancelReservation}
+              >
+                Remove from Watchlist
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="anime-reserve-btn"
+                onClick={handleReserveAnime}
+              >
+                Add to Watchlist
+              </button>
+            )}
           </div>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 };
 

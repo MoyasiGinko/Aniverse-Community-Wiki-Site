@@ -1,5 +1,8 @@
+"use client";
+
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
+import Image from 'next/image';
 
 const HomePage = () => {
   const [upcomingAnime, setUpcomingAnime] = useState([]);
@@ -25,57 +28,47 @@ const HomePage = () => {
   }, []);
 
   return (
-    <div id="home">
-      <ul className="cards">
-        <li className="card">
-          <Link to="/genres">
-            <div className="card-content">
-              <span>Genres</span>
-            </div>
-          </Link>
-        </li>
-        <li className="card">
-          <Link to="/anime">
-            <div className="card-content">
-              <span>Animes</span>
-            </div>
-          </Link>
-        </li>
-        <li className="card">
-          <Link to="/search">
-            <div className="card-content">
-              <span>Search</span>
-            </div>
-          </Link>
-        </li>
-        <li className="card">
-          <Link to="/profile">
-            <div className="card-content">
-              <span>Profile</span>
-            </div>
-          </Link>
-        </li>
-      </ul>
-      <div className="upcoming-anime">
-        <h2>Upcoming Anime</h2>
+    <main className="home-page">
+      <section className="hero-panel">
+        <p className="eyebrow">Curated Anime Intelligence</p>
+        <h1>Track releases, build your watchlist, and contribute to the living anime wiki.</h1>
+        <p>
+          Aniverse blends discovery, community, and editorial depth into one modern hub for anime enthusiasts.
+        </p>
+        <div className="hero-actions">
+          <Link href="/anime" className="action-button">Browse Anime</Link>
+          <Link href="/wiki" className="action-button ghost">Open Wiki</Link>
+        </div>
+      </section>
+
+      <section className="quick-grid">
+        <Link href="/genres" className="quick-card"><h3>Genre Atlas</h3><p>Explore anime by thematic clusters.</p></Link>
+        <Link href="/search" className="quick-card"><h3>Deep Search</h3><p>Find titles instantly with responsive search.</p></Link>
+        <Link href="/community" className="quick-card"><h3>Community Lounge</h3><p>Threads, comments, and moderation tools.</p></Link>
+        <Link href="/stats" className="quick-card"><h3>Progress & Badges</h3><p>Track your contribution profile and milestones.</p></Link>
+      </section>
+
+      <section className="section-block">
+        <div className="section-header">
+          <h2>Upcoming Radar</h2>
+          <Link href="/anime">See all anime</Link>
+        </div>
         {upcomingAnime.length > 0 ? (
-          <ul className="anime-list">
-            {upcomingAnime.map((anime) => (
-              <li className="anime-card" key={anime.mal_id}>
-                <Link to={`/anime/${anime.mal_id}`}>
-                  <div className="anime-image">
-                    <img src={anime.images?.jpg?.image_url} alt={anime.title} />
-                  </div>
+          <ul className="media-grid">
+            {upcomingAnime.slice(0, 12).map((anime) => (
+              <li className="media-card" key={anime.mal_id}>
+                <Link href={`/anime/${anime.mal_id}`}>
+                  <Image src={anime.images?.jpg?.image_url || ''} alt={anime.title} width={240} height={330} />
                   <h3>{anime.title}</h3>
                 </Link>
               </li>
             ))}
           </ul>
         ) : (
-          <p>No upcoming anime found.</p>
+          <p>Loading upcoming anime...</p>
         )}
-      </div>
-    </div>
+      </section>
+    </main>
   );
 };
 

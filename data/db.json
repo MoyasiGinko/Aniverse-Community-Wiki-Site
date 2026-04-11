@@ -1,0 +1,21 @@
+{
+  "users": [
+    {
+      "id": "seed-admin",
+      "email": "admin@aniverse.local",
+      "username": "admin",
+      "passwordHash": "",
+      "provider": "local",
+      "role": "admin",
+      "bio": "Aniverse admin account",
+      "avatarUrl": "",
+      "joinedAt": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "sessions": [],
+  "watchlist": [],
+  "wiki": [],
+  "threads": [],
+  "comments": [],
+  "reports": []
+}

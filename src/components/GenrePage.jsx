@@ -1,10 +1,12 @@
+"use client";
+
 import React, { useEffect, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import Link from 'next/link';
+import Image from 'next/image';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchGenrePageData } from '../redux/features/Genres/pageSlice';
 
-const GenrePage = () => {
-  const { genreId } = useParams();
+const GenrePage = ({ genreId }) => {
   const dispatch = useDispatch();
   const {
     genreData, animeData, isLoading, error,
@@ -51,29 +53,25 @@ const GenrePage = () => {
   }
 
   const genreAnimes = filterGenreAnimes();
+  const genreName = genreData.find((genre) => genre.mal_id === Number(genreId))?.name || 'Unknown Genre';
 
   return (
-    <div>
-      <h1>
-        {genreData.find((genre) => genre.mal_id === Number(genreId))?.name
-          || 'Unknown'}
-        Anime
-      </h1>
-      <ul className="card-list">
+    <main className="page-shell">
+      <div className="section-header">
+        <h1>{genreName}</h1>
+        <p>{genreAnimes.length} results</p>
+      </div>
+      <ul className="media-grid">
         {genreAnimes.map((anime) => (
-          <li className="card" key={anime.mal_id}>
-            <Link to={`/anime/${anime.mal_id}`} className="card-link">
-              <img
-                src={anime.images?.jpg?.image_url}
-                alt={anime.title}
-                className="card-image"
-              />
-              <h3 className="card-title">{anime.title}</h3>
+          <li className="media-card" key={anime.mal_id}>
+            <Link href={`/anime/${anime.mal_id}`}>
+              <Image src={anime.images?.jpg?.image_url || ''} alt={anime.title} width={240} height={330} />
+              <h3>{anime.title}</h3>
             </Link>
           </li>
         ))}
       </ul>
-    </div>
+    </main>
   );
 };
 
