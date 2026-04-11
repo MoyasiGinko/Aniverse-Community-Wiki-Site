@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 
 const protectedRoutes = ['/profile/edit', '/moderation', '/stats'];
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
   const needsSession = protectedRoutes.some((route) => pathname.startsWith(route));
 
