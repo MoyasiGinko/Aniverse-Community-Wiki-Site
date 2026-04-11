@@ -128,6 +128,18 @@ npm run build
 npm run start
 ```
 
+### Supabase setup
+
+Create a `.env.local` file in the project root with:
+
+```sh
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_supabase_publishable_key
+```
+
+Then open your Supabase SQL editor and run the schema from `supabase/schema.sql`.
+This creates all required `app_*` tables used by the API routes.
+
 ### Run tests
 
 To run tests, run the following command:

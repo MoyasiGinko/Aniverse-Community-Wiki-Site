@@ -1,6 +1,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Shantell+Sans:wght@300;400;500&display=swap');
 
 :root {
+  --space-1: 0.5rem;
+  --space-2: 0.75rem;
+  --space-3: 1rem;
+  --space-4: 1.25rem;
+  --space-5: 1.6rem;
   --bg: #fff9f3;
   --surface: #ffffff;
   --surface-soft: #fff1e4;
@@ -225,15 +230,14 @@ a {
 .home-page,
 .feature-page {
   width: min(1240px, 94vw);
-  margin: 1.2rem auto 2.6rem;
+  margin: var(--space-4) auto 2.6rem;
   display: grid;
-  gap: 1.2rem;
+  gap: var(--space-4);
 }
 
 .hero-panel,
 .section-block,
 .feature-form,
-.feature-page section,
 .detail-hero,
 .media-card,
 .quick-card,
@@ -247,9 +251,9 @@ a {
 }
 
 .hero-panel {
-  padding: 1.45rem;
+  padding: var(--space-5);
   display: grid;
-  gap: 0.8rem;
+  gap: var(--space-2);
 }
 
 .hero-panel h1 {
@@ -277,17 +281,17 @@ a {
 .pill-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.62rem;
+  gap: var(--space-2);
 }
 
 .quick-grid {
   display: grid;
-  gap: 0.9rem;
+  gap: var(--space-3);
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .quick-card {
-  padding: 1rem;
+  padding: var(--space-4);
   transition: transform 220ms ease, box-shadow 220ms ease;
 }
 
@@ -308,33 +312,33 @@ a {
 
 .section-block,
 .feature-form {
-  padding: 1rem;
+  padding: var(--space-4);
 }
 
 .list-panel ul {
   list-style: none;
   display: grid;
-  gap: 0.65rem;
-  margin-top: 0.75rem;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
 }
 
 .list-panel li {
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--surface-soft);
-  padding: 0.72rem 0.8rem;
+  padding: 0.85rem 0.95rem;
 }
 
 .thread-list {
   display: grid;
-  gap: 0.65rem;
+  gap: var(--space-2);
 }
 
 .thread-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.55rem;
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 
@@ -347,7 +351,7 @@ a {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 0.55rem;
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 
@@ -355,23 +359,28 @@ a {
   list-style: none;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.65rem;
+  gap: var(--space-2);
 }
 
 .metric-list li {
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--surface-soft);
-  padding: 0.7rem;
+  padding: 0.85rem;
 }
 
 .section-header {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.85rem;
+  gap: var(--space-3);
   flex-wrap: wrap;
-  margin-bottom: 0.8rem;
+  margin-bottom: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--elev-1);
 }
 
 .section-header h1,
@@ -393,7 +402,7 @@ a {
   list-style: none;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.9rem;
+  gap: var(--space-3);
 }
 
 .media-grid.compact {
@@ -402,7 +411,7 @@ a {
 
 .media-card {
   list-style: none;
-  padding: 0.62rem;
+  padding: var(--space-3);
   transition: transform 220ms ease, box-shadow 220ms ease;
 }
 
@@ -414,7 +423,7 @@ a {
 .media-card h3 {
   font-size: 0.96rem;
   line-height: 1.35;
-  margin-top: 0.52rem;
+  margin-top: var(--space-2);
 }
 
 .media-card img,
@@ -428,11 +437,11 @@ a {
   list-style: none;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.8rem;
+  gap: var(--space-3);
 }
 
 .genre-chip {
-  padding: 0.85rem;
+  padding: var(--space-4);
   border-radius: 14px;
   border: 1px solid var(--border);
   background: var(--surface-soft);
@@ -450,30 +459,30 @@ a {
 }
 
 .detail-hero {
-  padding: 1rem;
+  padding: var(--space-4);
   display: grid;
   grid-template-columns: 330px 1fr;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .detail-copy {
   display: grid;
   align-content: start;
-  gap: 0.8rem;
+  gap: var(--space-3);
 }
 
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.7rem;
+  gap: var(--space-2);
 }
 
 .stats-grid > div {
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 0.7rem;
+  padding: 0.85rem;
   display: grid;
-  gap: 0.2rem;
+  gap: 0.3rem;
   background: var(--surface-soft);
 }
 
@@ -487,10 +496,10 @@ a {
 }
 
 .search-panel {
-  padding: 0.78rem;
+  padding: var(--space-3);
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 0.65rem;
+  gap: var(--space-2);
 }
 
 .feature-form input,
@@ -513,7 +522,8 @@ a {
 button {
   border: none;
   border-radius: 10px;
-  padding: 0.55rem 0.86rem;
+  min-height: 40px;
+  padding: 0.58rem 0.92rem;
   cursor: pointer;
   background: var(--brand);
   color: #fff;
@@ -552,6 +562,34 @@ button:hover {
   text-align: center;
   gap: 1rem;
   padding: 1rem;
+}
+
+.anime-details-page,
+.loading-message,
+.error-message {
+  width: min(1240px, 94vw);
+  margin: var(--space-4) auto;
+}
+
+.anime-details-page {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.loading-message,
+.error-message {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--elev-1);
+  padding: var(--space-4);
+}
+
+.pagination-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
 }
 
 .error-text {

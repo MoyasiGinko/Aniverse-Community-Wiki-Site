@@ -75,9 +75,9 @@ const Animes = () => {
         <p>Page {currentPage}</p>
       </div>
 
-      <div className="media-grid">
+      <ul className="media-grid">
         {animes.map((anime) => (
-          <article className="media-card" key={anime.mal_id}>
+          <li className="media-card" key={anime.mal_id}>
             <Link href={`/anime/${anime.mal_id}`}>
               <Image
                 className="animeImage"
@@ -107,9 +107,9 @@ const Animes = () => {
                 Add to Watchlist
               </button>
             )}
-          </article>
+          </li>
         ))}
-      </div>
+      </ul>
 
       <div className="pagination-buttons">
         <button type="button" onClick={handleFirstPage}>
