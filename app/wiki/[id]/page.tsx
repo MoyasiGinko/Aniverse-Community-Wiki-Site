@@ -68,20 +68,48 @@ export default function WikiEntryPage() {
       ) : entry ? (
         <section className="wiki-detail-shell fade-in-up">
           <section className="wiki-detail-left">
-            <aside className="section-block">
-              <h3>Article Meta</h3>
-              <p><strong>{entry.title}</strong></p>
-              <p className="meta-line">Slug: {entry.slug}</p>
-              <p className="meta-line">Revision: {entry.revision}</p>
-              <p className="meta-line">Status: {entry.status}</p>
-              <p className="meta-line">Updated: {(entry.updatedAt || '').slice(0, 10) || 'N/A'}</p>
-              {entry.malAnimeTitle ? <p className="meta-line">Reference: {entry.malAnimeTitle}</p> : null}
-              <div className="pill-list">
-                {entry.tags.map((tag) => <span key={tag} className="badge-pill">#{tag}</span>)}
+            <aside className="wiki-meta-panel fade-in-up">
+              <div className="wiki-meta-header">
+                 <div className="wiki-meta-icon">{entry.title.charAt(0).toUpperCase()}</div>
+                 <div>
+                   <h3>{entry.title}</h3>
+                   {entry.malAnimeTitle ? <span className="wiki-meta-subtitle">Ref: {entry.malAnimeTitle}</span> : null}
+                 </div>
               </div>
-              <div className="inline-actions">
-                <Link href="/wiki" className="action-button ghost">Back to Index</Link>
-                <Link href={`/wiki/${entry.id}/edit`} className="action-button">Edit Article</Link>
+
+              <div className="wiki-meta-grid">
+                <div className="wiki-meta-stat">
+                  <span className="wiki-stat-label">Status</span>
+                  <strong className={`wiki-stat-value status-${entry.status.toLowerCase()}`}>{entry.status.toUpperCase()}</strong>
+                </div>
+                <div className="wiki-meta-stat">
+                  <span className="wiki-stat-label">Revision</span>
+                  <strong className="wiki-stat-value">v{entry.revision}</strong>
+                </div>
+                <div className="wiki-meta-stat">
+                  <span className="wiki-stat-label">Updated</span>
+                  <strong className="wiki-stat-value">{(entry.updatedAt || '').slice(0, 10) || 'N/A'}</strong>
+                </div>
+                <div className="wiki-meta-stat">
+                  <span className="wiki-stat-label">Slug</span>
+                  <strong className="wiki-stat-value" style={{ textTransform: 'none' }}>
+                    {entry.slug.length > 12 ? entry.slug.slice(0, 12) + '...' : entry.slug}
+                  </strong>
+                </div>
+              </div>
+
+              {entry.tags.length ? (
+                <div className="wiki-meta-tags">
+                  <span className="wiki-stat-label">Tags</span>
+                  <div className="pill-list">
+                    {entry.tags.map((tag) => <span key={tag} className="badge-pill">#{tag}</span>)}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="wiki-meta-actions">
+                <Link href="/wiki" className="action-button ghost full-width">Back to Index</Link>
+                <Link href={`/wiki/${entry.id}/edit`} className="action-button full-width">Edit Article</Link>
               </div>
             </aside>
 

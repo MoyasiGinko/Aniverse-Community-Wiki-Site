@@ -94,26 +94,43 @@ export default function WikiComments({ entryId }: { entryId: string }) {
     const key = parentId || 'root';
     const items = wikiCommentTree.get(key) || [];
 
-    return items.map((comment) => (
-      <li key={comment.id} className="wiki-comment-row fade-in-up" style={{ marginLeft: `${depth * 14}px` }}>
-        <p>{comment.body}</p>
-        <div className="inline-actions">
-          <span className="meta-line">By {comment.authorName || 'Member'} | {(comment.createdAt || '').slice(0, 16).replace('T', ' ')}</span>
-          <button type="button" className="action-button ghost" onClick={() => setReplyToWikiComment(comment.id)}>Reply</button>
-        </div>
-        {replyToWikiComment === comment.id ? (
-          <form className="feature-form auth-form-grid fade-in-up" onSubmit={postWikiReply}>
-            <label htmlFor={`wiki-reply-${comment.id}`}>Reply</label>
-            <textarea id={`wiki-reply-${comment.id}`} value={wikiReplyBody} onChange={(e) => setWikiReplyBody(e.target.value)} rows={3} required />
-            <div className="inline-actions">
-              <button type="submit">Post Reply</button>
-              <button type="button" className="action-button ghost" onClick={() => { setReplyToWikiComment(null); setWikiReplyBody(''); }}>Cancel</button>
+    return items.map((comment) => {
+      const childNodes = renderWikiCommentNode(comment.id, depth + 1);
+      return (
+        <li key={comment.id} className={`wiki-comment-node fade-in-up depth-${depth}`}>
+          <div className="wiki-comment-card">
+            <header className="wiki-comment-header">
+              <div className="wiki-avatar">{(comment.authorName || 'M')[0].toUpperCase()}</div>
+              <div>
+                <strong>{comment.authorName || 'Member'}</strong>
+                <span className="meta-line"> • {(comment.createdAt || '').slice(0, 16).replace('T', ' ')}</span>
+              </div>
+            </header>
+            <div className="wiki-comment-body">
+              <p>{comment.body}</p>
             </div>
-          </form>
-        ) : null}
-        <ul>{renderWikiCommentNode(comment.id, depth + 1)}</ul>
-      </li>
-    ));
+            <div className="wiki-comment-actions">
+              <button type="button" className="action-button ghost small" onClick={() => setReplyToWikiComment(comment.id)}>Reply</button>
+            </div>
+          </div>
+          
+          {replyToWikiComment === comment.id ? (
+            <form className="feature-form auth-form-grid fade-in-up wiki-reply-form" onSubmit={postWikiReply}>
+              <label htmlFor={`wiki-reply-${comment.id}`}>Replying to {comment.authorName || 'Member'}</label>
+              <textarea id={`wiki-reply-${comment.id}`} value={wikiReplyBody} onChange={(e) => setWikiReplyBody(e.target.value)} rows={3} required placeholder="Post your reply..." />
+              <div className="inline-actions">
+                <button type="submit">Post Reply</button>
+                <button type="button" className="action-button ghost" onClick={() => { setReplyToWikiComment(null); setWikiReplyBody(''); }}>Cancel</button>
+              </div>
+            </form>
+          ) : null}
+
+          {childNodes.length > 0 ? (
+            <ul className="wiki-reply-thread">{childNodes}</ul>
+          ) : null}
+        </li>
+      );
+    });
   };
 
   if (loading) {
@@ -149,7 +166,7 @@ export default function WikiComments({ entryId }: { entryId: string }) {
         </form>
       ) : null}
 
-      <ul style={{ marginTop: '1rem', display: 'grid', gap: '0.8rem' }}>{renderWikiCommentNode(null)}</ul>
+      <ul style={{ marginTop: '1rem', display: 'grid', gap: '0.8rem', paddingLeft: 0, listStyle: 'none' }}>{renderWikiCommentNode(null)}</ul>
     </div>
   );
 }

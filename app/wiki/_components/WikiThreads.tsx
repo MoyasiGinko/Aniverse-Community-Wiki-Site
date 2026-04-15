@@ -148,26 +148,43 @@ export default function WikiThreads() {
     const key = parentId || 'root';
     const items = threadCommentTree.get(key) || [];
 
-    return items.map((comment) => (
-      <li key={comment.id} className="wiki-comment-row fade-in-up" style={{ marginLeft: `${depth * 14}px` }}>
-        <p>{comment.body}</p>
-        <div className="inline-actions">
-          <span className="meta-line">By {comment.authorName || 'Member'} | {(comment.createdAt || '').slice(0, 16).replace('T', ' ')}</span>
-          <button type="button" className="action-button ghost" onClick={() => setReplyToThreadComment(comment.id)}>Reply</button>
-        </div>
-        {replyToThreadComment === comment.id ? (
-          <form className="feature-form auth-form-grid fade-in-up" onSubmit={postThreadReply}>
-            <label htmlFor={`thread-reply-${comment.id}`}>Reply</label>
-            <textarea id={`thread-reply-${comment.id}`} value={threadReplyBody} onChange={(e) => setThreadReplyBody(e.target.value)} rows={3} required />
-            <div className="inline-actions">
-              <button type="submit">Post Reply</button>
-              <button type="button" className="action-button ghost" onClick={() => { setReplyToThreadComment(null); setThreadReplyBody(''); }}>Cancel</button>
+    return items.map((comment) => {
+      const childNodes = renderThreadCommentNode(comment.id, depth + 1);
+      return (
+        <li key={comment.id} className={`wiki-comment-node fade-in-up depth-${depth}`}>
+          <div className="wiki-comment-card">
+            <header className="wiki-comment-header">
+              <div className="wiki-avatar">{(comment.authorName || 'M')[0].toUpperCase()}</div>
+              <div>
+                <strong>{comment.authorName || 'Member'}</strong>
+                <span className="meta-line"> • {(comment.createdAt || '').slice(0, 16).replace('T', ' ')}</span>
+              </div>
+            </header>
+            <div className="wiki-comment-body">
+              <p>{comment.body}</p>
             </div>
-          </form>
-        ) : null}
-        <ul>{renderThreadCommentNode(comment.id, depth + 1)}</ul>
-      </li>
-    ));
+            <div className="wiki-comment-actions">
+              <button type="button" className="action-button ghost small" onClick={() => setReplyToThreadComment(comment.id)}>Reply</button>
+            </div>
+          </div>
+          
+          {replyToThreadComment === comment.id ? (
+            <form className="feature-form auth-form-grid fade-in-up wiki-reply-form" onSubmit={postThreadReply}>
+              <label htmlFor={`thread-reply-${comment.id}`}>Replying to {comment.authorName || 'Member'}</label>
+              <textarea id={`thread-reply-${comment.id}`} value={threadReplyBody} onChange={(e) => setThreadReplyBody(e.target.value)} rows={3} required placeholder="Post your reply..." />
+              <div className="inline-actions">
+                <button type="submit">Post Reply</button>
+                <button type="button" className="action-button ghost" onClick={() => { setReplyToThreadComment(null); setThreadReplyBody(''); }}>Cancel</button>
+              </div>
+            </form>
+          ) : null}
+
+          {childNodes.length > 0 ? (
+            <ul className="wiki-reply-thread">{childNodes}</ul>
+          ) : null}
+        </li>
+      );
+    });
   };
 
 
@@ -246,7 +263,7 @@ export default function WikiThreads() {
           {loadingComments ? (
              <div className="wiki-skeleton fade-in-up" style={{ height: '80px', marginTop: '1rem' }} />
           ) : (
-            <ul style={{ marginTop: '1rem', display: 'grid', gap: '0.5rem' }}>{renderThreadCommentNode(null)}</ul>
+            <ul style={{ marginTop: '1rem', display: 'grid', gap: '0.8rem', paddingLeft: 0, listStyle: 'none' }}>{renderThreadCommentNode(null)}</ul>
           )}
         </section>
       ) : null}
