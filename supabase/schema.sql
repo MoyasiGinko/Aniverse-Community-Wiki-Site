@@ -55,10 +55,13 @@ alter table public.app_wiki_entries add column if not exists extra_image_urls te
 create table if not exists public.app_wiki_comments (
   id uuid primary key default gen_random_uuid(),
   entry_id uuid not null references public.app_wiki_entries(id) on delete cascade,
+  parent_comment_id uuid references public.app_wiki_comments(id) on delete cascade,
   body text not null,
   author_id uuid not null references public.app_users(id) on delete cascade,
   created_at timestamptz not null default now()
 );
+
+alter table public.app_wiki_comments add column if not exists parent_comment_id uuid references public.app_wiki_comments(id) on delete cascade;
 
 create table if not exists public.app_threads (
   id uuid primary key default gen_random_uuid(),
@@ -71,10 +74,13 @@ create table if not exists public.app_threads (
 create table if not exists public.app_comments (
   id uuid primary key default gen_random_uuid(),
   thread_id uuid not null references public.app_threads(id) on delete cascade,
+  parent_comment_id uuid references public.app_comments(id) on delete cascade,
   body text not null,
   author_id uuid not null references public.app_users(id) on delete cascade,
   created_at timestamptz not null default now()
 );
+
+alter table public.app_comments add column if not exists parent_comment_id uuid references public.app_comments(id) on delete cascade;
 
 create table if not exists public.app_reports (
   id uuid primary key default gen_random_uuid(),
@@ -90,9 +96,11 @@ create index if not exists idx_watchlist_user on public.app_watchlist(user_id);
 create index if not exists idx_wiki_author on public.app_wiki_entries(author_id);
 create index if not exists idx_wiki_comments_entry on public.app_wiki_comments(entry_id);
 create index if not exists idx_wiki_comments_author on public.app_wiki_comments(author_id);
+create index if not exists idx_wiki_comments_parent on public.app_wiki_comments(parent_comment_id);
 create index if not exists idx_threads_author on public.app_threads(author_id);
 create index if not exists idx_comments_thread on public.app_comments(thread_id);
 create index if not exists idx_comments_author on public.app_comments(author_id);
+create index if not exists idx_comments_parent on public.app_comments(parent_comment_id);
 create index if not exists idx_reports_reporter on public.app_reports(reporter_id);
 
 alter table public.app_users enable row level security;

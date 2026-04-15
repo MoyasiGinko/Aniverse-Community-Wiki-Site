@@ -30,7 +30,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const { id } = await params;
-  const payload = (await req.json()) as { body?: string };
+  const payload = (await req.json()) as { body?: string; parentCommentId?: string | null };
 
   if (!payload.body || !payload.body.trim()) {
     return NextResponse.json({ error: 'body is required' }, { status: 400 });
@@ -42,6 +42,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return db;
     }
 
+    const parentId = payload.parentCommentId || null;
+    if (parentId && !db.wikiComments.some((comment) => comment.id === parentId && comment.entryId === entry.id)) {
+      return db;
+    }
+
     return {
       ...db,
       wikiComments: [
@@ -49,6 +54,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         {
           id: crypto.randomUUID(),
           entryId: entry.id,
+          parentCommentId: parentId,
           body: payload.body!.trim(),
           authorId: user.id,
           createdAt: new Date().toISOString(),

@@ -608,6 +608,13 @@ a {
   padding: 0.72rem;
 }
 
+.wiki-comment-row > ul {
+  list-style: none;
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
 .wiki-detail-body {
   white-space: pre-wrap;
   line-height: 1.7;
@@ -643,6 +650,15 @@ a {
   object-fit: cover;
   border-radius: 12px;
   border: 1px solid var(--border);
+}
+
+.wiki-full-synopsis {
+  white-space: pre-wrap;
+  line-height: 1.65;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-soft);
+  padding: 0.75rem;
 }
 
 .wiki-anime-metrics {

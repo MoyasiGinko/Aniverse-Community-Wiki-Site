@@ -9,7 +9,11 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   return NextResponse.json({
     comments: db.comments
       .filter((entry) => entry.threadId === id)
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      .map((comment) => ({
+        ...comment,
+        authorName: db.users.find((user) => user.id === comment.authorId)?.username || 'Unknown',
+      })),
   });
 }
 
@@ -20,20 +24,34 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const { id } = await params;
-  const payload = (await req.json()) as { body?: string };
+  const payload = (await req.json()) as { body?: string; parentCommentId?: string | null };
 
   if (!payload.body) {
     return NextResponse.json({ error: 'body is required' }, { status: 400 });
   }
 
+  const parentId = payload.parentCommentId || null;
   const comment = {
     id: crypto.randomUUID(),
     threadId: id,
+    parentCommentId: parentId,
     body: payload.body,
     authorId: user.id,
     createdAt: new Date().toISOString(),
   };
 
-  await updateDb((db) => ({ ...db, comments: [...db.comments, comment] }));
+  let created = false;
+  await updateDb((db) => {
+    if (parentId && !db.comments.some((entry) => entry.id === parentId && entry.threadId === id)) {
+      return db;
+    }
+    created = true;
+    return { ...db, comments: [...db.comments, comment] };
+  });
+
+  if (!created) {
+    return NextResponse.json({ error: 'Invalid parent comment' }, { status: 400 });
+  }
+
   return NextResponse.json({ comment }, { status: 201 });
 }

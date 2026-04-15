@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { apiRequest } from '../../../src/lib/apiClient';
 import ProgressiveImage from '../../../src/components/ProgressiveImage';
@@ -26,6 +26,15 @@ type WikiComment = {
   body: string;
   createdAt: string;
   authorName?: string;
+  parentCommentId?: string | null;
+};
+
+type ThreadComment = {
+  id: string;
+  body: string;
+  createdAt: string;
+  authorName?: string;
+  parentCommentId?: string | null;
 };
 
 type MalAnimeDetails = {
@@ -56,23 +65,41 @@ type CommunityThread = {
   body: string;
 };
 
+function toTree<T extends { id: string; parentCommentId?: string | null }>(items: T[]) {
+  const byParent = new Map<string, T[]>();
+  for (const item of items) {
+    const key = item.parentCommentId || 'root';
+    byParent.set(key, [...(byParent.get(key) || []), item]);
+  }
+  return byParent;
+}
+
 export default function WikiEntryPage() {
   const params = useParams<{ id: string }>();
   const [entry, setEntry] = useState<Entry | null>(null);
   const [loading, setLoading] = useState(true);
   const [anime, setAnime] = useState<MalAnimeDetails | null>(null);
-  const [commentBody, setCommentBody] = useState('');
+
   const [comments, setComments] = useState<WikiComment[]>([]);
+  const [commentBody, setCommentBody] = useState('');
+  const [replyToWikiComment, setReplyToWikiComment] = useState<string | null>(null);
+  const [wikiReplyBody, setWikiReplyBody] = useState('');
+
   const [threads, setThreads] = useState<CommunityThread[]>([]);
   const [threadTitle, setThreadTitle] = useState('');
   const [threadBody, setThreadBody] = useState('');
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  const [threadComments, setThreadComments] = useState<ThreadComment[]>([]);
+  const [threadCommentBody, setThreadCommentBody] = useState('');
+  const [replyToThreadComment, setReplyToThreadComment] = useState<string | null>(null);
+  const [threadReplyBody, setThreadReplyBody] = useState('');
+
   const [discussionTab, setDiscussionTab] = useState<'comments' | 'threads'>('comments');
   const [info, setInfo] = useState('');
   const [error, setError] = useState('');
 
-  const load = async () => {
+  const loadEntryData = async () => {
     setLoading(true);
-
     const [entryData, commentsData, threadsData] = await Promise.all([
       apiRequest<{ entry: Entry }>(`/api/wiki/${params.id}`),
       apiRequest<{ comments: WikiComment[] }>(`/api/wiki/${params.id}/comments`),
@@ -97,14 +124,19 @@ export default function WikiEntryPage() {
     setLoading(false);
   };
 
+  const loadThreadComments = async (threadId: string) => {
+    const data = await apiRequest<{ comments: ThreadComment[] }>(`/api/community/threads/${threadId}/comments`);
+    setThreadComments(data.comments);
+  };
+
   useEffect(() => {
-    load().catch((err) => {
+    loadEntryData().catch((err) => {
       setError((err as Error).message);
       setLoading(false);
     });
   }, [params.id]);
 
-  const postComment = async (e: FormEvent) => {
+  const postWikiComment = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
     setInfo('');
@@ -112,11 +144,34 @@ export default function WikiEntryPage() {
     try {
       await apiRequest(`/api/wiki/${params.id}/comments`, {
         method: 'POST',
-        body: JSON.stringify({ body: commentBody }),
+        body: JSON.stringify({ body: commentBody, parentCommentId: null }),
       });
       setCommentBody('');
       setInfo('Comment added.');
-      await load();
+      await loadEntryData();
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  const postWikiReply = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!replyToWikiComment) {
+      return;
+    }
+
+    setError('');
+    setInfo('');
+
+    try {
+      await apiRequest(`/api/wiki/${params.id}/comments`, {
+        method: 'POST',
+        body: JSON.stringify({ body: wikiReplyBody, parentCommentId: replyToWikiComment }),
+      });
+      setWikiReplyBody('');
+      setReplyToWikiComment(null);
+      setInfo('Reply added.');
+      await loadEntryData();
     } catch (err) {
       setError((err as Error).message);
     }
@@ -128,28 +183,120 @@ export default function WikiEntryPage() {
     setInfo('');
 
     try {
-      await apiRequest('/api/community/threads', {
+      const response = await apiRequest<{ thread: CommunityThread }>('/api/community/threads', {
         method: 'POST',
         body: JSON.stringify({ title: threadTitle, body: threadBody }),
       });
       setThreadTitle('');
       setThreadBody('');
       setInfo('Discussion thread published.');
-      await load();
+      await loadEntryData();
+      setActiveThreadId(response.thread.id);
+      await loadThreadComments(response.thread.id);
     } catch (err) {
       setError((err as Error).message);
     }
   };
 
-  const relatedThreads = threads.filter((thread) => {
-    if (!entry) {
-      return false;
+  const postThreadComment = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!activeThreadId) {
+      return;
     }
-    const needleA = entry.title.toLowerCase();
-    const needleB = (entry.malAnimeTitle || '').toLowerCase();
-    const hay = `${thread.title} ${thread.body}`.toLowerCase();
-    return hay.includes(needleA) || (needleB && hay.includes(needleB));
-  }).slice(0, 8);
+
+    setError('');
+    setInfo('');
+
+    try {
+      await apiRequest(`/api/community/threads/${activeThreadId}/comments`, {
+        method: 'POST',
+        body: JSON.stringify({ body: threadCommentBody, parentCommentId: null }),
+      });
+      setThreadCommentBody('');
+      setInfo('Thread comment added.');
+      await loadThreadComments(activeThreadId);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  const postThreadReply = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!activeThreadId || !replyToThreadComment) {
+      return;
+    }
+
+    setError('');
+    setInfo('');
+
+    try {
+      await apiRequest(`/api/community/threads/${activeThreadId}/comments`, {
+        method: 'POST',
+        body: JSON.stringify({ body: threadReplyBody, parentCommentId: replyToThreadComment }),
+      });
+      setThreadReplyBody('');
+      setReplyToThreadComment(null);
+      setInfo('Thread reply added.');
+      await loadThreadComments(activeThreadId);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  const wikiCommentTree = useMemo(() => toTree(comments), [comments]);
+  const threadCommentTree = useMemo(() => toTree(threadComments), [threadComments]);
+
+  const renderWikiCommentNode = (parentId: string | null, depth = 0): JSX.Element[] => {
+    const key = parentId || 'root';
+    const items = wikiCommentTree.get(key) || [];
+
+    return items.map((comment) => (
+      <li key={comment.id} className="wiki-comment-row" style={{ marginLeft: `${depth * 14}px` }}>
+        <p>{comment.body}</p>
+        <div className="inline-actions">
+          <span className="meta-line">By {comment.authorName || 'Member'} | {(comment.createdAt || '').slice(0, 16).replace('T', ' ')}</span>
+          <button type="button" className="action-button ghost" onClick={() => setReplyToWikiComment(comment.id)}>Reply</button>
+        </div>
+        {replyToWikiComment === comment.id ? (
+          <form className="feature-form auth-form-grid" onSubmit={postWikiReply}>
+            <label htmlFor={`wiki-reply-${comment.id}`}>Reply</label>
+            <textarea id={`wiki-reply-${comment.id}`} value={wikiReplyBody} onChange={(e) => setWikiReplyBody(e.target.value)} rows={3} required />
+            <div className="inline-actions">
+              <button type="submit">Post Reply</button>
+              <button type="button" className="action-button ghost" onClick={() => { setReplyToWikiComment(null); setWikiReplyBody(''); }}>Cancel</button>
+            </div>
+          </form>
+        ) : null}
+        <ul>{renderWikiCommentNode(comment.id, depth + 1)}</ul>
+      </li>
+    ));
+  };
+
+  const renderThreadCommentNode = (parentId: string | null, depth = 0): JSX.Element[] => {
+    const key = parentId || 'root';
+    const items = threadCommentTree.get(key) || [];
+
+    return items.map((comment) => (
+      <li key={comment.id} className="wiki-comment-row" style={{ marginLeft: `${depth * 14}px` }}>
+        <p>{comment.body}</p>
+        <div className="inline-actions">
+          <span className="meta-line">By {comment.authorName || 'Member'} | {(comment.createdAt || '').slice(0, 16).replace('T', ' ')}</span>
+          <button type="button" className="action-button ghost" onClick={() => setReplyToThreadComment(comment.id)}>Reply</button>
+        </div>
+        {replyToThreadComment === comment.id ? (
+          <form className="feature-form auth-form-grid" onSubmit={postThreadReply}>
+            <label htmlFor={`thread-reply-${comment.id}`}>Reply</label>
+            <textarea id={`thread-reply-${comment.id}`} value={threadReplyBody} onChange={(e) => setThreadReplyBody(e.target.value)} rows={3} required />
+            <div className="inline-actions">
+              <button type="submit">Post Reply</button>
+              <button type="button" className="action-button ghost" onClick={() => { setReplyToThreadComment(null); setThreadReplyBody(''); }}>Cancel</button>
+            </div>
+          </form>
+        ) : null}
+        <ul>{renderThreadCommentNode(comment.id, depth + 1)}</ul>
+      </li>
+    ));
+  };
 
   return (
     <main className="feature-page wiki-fandom-page">
@@ -186,17 +333,7 @@ export default function WikiEntryPage() {
             <section className="section-block portal-card">
               <h2>{entry.title}</h2>
               <p className="meta-line">This page is the public article view.</p>
-              {entry.coverImageUrl ? (
-                <ProgressiveImage src={entry.coverImageUrl} alt={entry.title} className="wiki-detail-cover" />
-              ) : null}
               <article className="wiki-detail-body">{entry.body}</article>
-              {entry.extraImageUrls?.length ? (
-                <div className="wiki-gallery">
-                  {entry.extraImageUrls.map((url) => (
-                    <ProgressiveImage src={url} key={url} alt="Wiki attachment" className="wiki-gallery-image" />
-                  ))}
-                </div>
-              ) : null}
             </section>
 
             <section className="section-block portal-card list-panel">
@@ -208,24 +345,17 @@ export default function WikiEntryPage() {
               {discussionTab === 'comments' ? (
                 <div className="fade-in-up">
                   <h2>Discussion Comments</h2>
-                  <form className="feature-form auth-form-grid" onSubmit={postComment}>
+                  <form className="feature-form auth-form-grid" onSubmit={postWikiComment}>
                     <label htmlFor="comment">Add Comment</label>
                     <textarea id="comment" value={commentBody} onChange={(e) => setCommentBody(e.target.value)} rows={4} required />
                     <button type="submit">Post Comment</button>
                   </form>
 
-                  <ul>
-                    {comments.length ? comments.map((comment) => (
-                      <li key={comment.id} className="wiki-comment-row">
-                        <p>{comment.body}</p>
-                        <span className="meta-line">By {comment.authorName || 'Member'} | {(comment.createdAt || '').slice(0, 16).replace('T', ' ')}</span>
-                      </li>
-                    )) : <li>No comments yet.</li>}
-                  </ul>
+                  <ul>{renderWikiCommentNode(null)}</ul>
                 </div>
               ) : (
                 <div className="fade-in-up">
-                  <h2>Related Threads</h2>
+                  <h2>Threads</h2>
                   <form className="feature-form auth-form-grid" onSubmit={createThread}>
                     <label htmlFor="thread-title">Create Thread Title</label>
                     <input id="thread-title" value={threadTitle} onChange={(e) => setThreadTitle(e.target.value)} required />
@@ -235,16 +365,48 @@ export default function WikiEntryPage() {
                   </form>
 
                   <ul>
-                    {relatedThreads.length ? relatedThreads.map((thread) => (
+                    {threads.length ? threads.map((thread) => (
                       <li key={thread.id} className="wiki-comment-row">
-                        <strong>{thread.title}</strong>
+                        <div className="inline-actions">
+                          <strong>{thread.title}</strong>
+                          <button type="button" className="action-button ghost" onClick={() => {
+                            setActiveThreadId(thread.id);
+                            loadThreadComments(thread.id).catch((err) => setError((err as Error).message));
+                          }}>
+                            Open Thread
+                          </button>
+                        </div>
                         <p>{thread.body.slice(0, 220)}{thread.body.length > 220 ? '...' : ''}</p>
                       </li>
-                    )) : <li>No related threads yet.</li>}
+                    )) : <li>No threads yet.</li>}
                   </ul>
+
+                  {activeThreadId ? (
+                    <section className="section-block">
+                      <h3>Thread Replies</h3>
+                      <form className="feature-form auth-form-grid" onSubmit={postThreadComment}>
+                        <label htmlFor="thread-comment">Add Thread Comment</label>
+                        <textarea id="thread-comment" value={threadCommentBody} onChange={(e) => setThreadCommentBody(e.target.value)} rows={4} required />
+                        <button type="submit">Post Thread Comment</button>
+                      </form>
+
+                      <ul>{renderThreadCommentNode(null)}</ul>
+                    </section>
+                  ) : null}
                 </div>
               )}
             </section>
+
+            {entry.extraImageUrls?.length ? (
+              <section className="section-block portal-card">
+                <h2>Attachments</h2>
+                <div className="wiki-gallery">
+                  {entry.extraImageUrls.map((url) => (
+                    <ProgressiveImage src={url} key={url} alt="Wiki attachment" className="wiki-gallery-image" />
+                  ))}
+                </div>
+              </section>
+            ) : null}
           </section>
 
           <aside className="wiki-detail-right section-block fade-in-up">
@@ -269,10 +431,11 @@ export default function WikiEntryPage() {
                 <p className="meta-line">{anime.type} | {anime.status} {anime.year ? `| ${anime.year}` : ''}</p>
                 {anime.genres?.length ? (
                   <div className="pill-list">
-                    {anime.genres.slice(0, 8).map((genre) => <span className="badge-pill" key={genre}>{genre}</span>)}
+                    {anime.genres.slice(0, 12).map((genre) => <span className="badge-pill" key={genre}>{genre}</span>)}
                   </div>
                 ) : null}
-                {anime.synopsis ? <p className="meta-line">{anime.synopsis.slice(0, 360)}{anime.synopsis.length > 360 ? '...' : ''}</p> : null}
+                {anime.studios?.length ? <p className="meta-line">Studios: {anime.studios.join(', ')}</p> : null}
+                {anime.synopsis ? <p className="wiki-full-synopsis">{anime.synopsis}</p> : null}
               </>
             ) : (
               <p className="meta-line">No MAL reference attached for this article yet.</p>

@@ -48,6 +48,7 @@ export interface WikiRecord {
 export interface WikiCommentRecord {
   id: string;
   entryId: string;
+  parentCommentId: string | null;
   body: string;
   authorId: string;
   createdAt: string;
@@ -64,6 +65,7 @@ export interface CommunityThreadRecord {
 export interface CommunityCommentRecord {
   id: string;
   threadId: string;
+  parentCommentId: string | null;
   body: string;
   authorId: string;
   createdAt: string;
@@ -143,6 +145,7 @@ const toThread = (row: any): CommunityThreadRecord => ({
 const toWikiComment = (row: any): WikiCommentRecord => ({
   id: row.id,
   entryId: row.entry_id,
+  parentCommentId: row.parent_comment_id || null,
   body: row.body,
   authorId: row.author_id,
   createdAt: row.created_at,
@@ -151,6 +154,7 @@ const toWikiComment = (row: any): WikiCommentRecord => ({
 const toComment = (row: any): CommunityCommentRecord => ({
   id: row.id,
   threadId: row.thread_id,
+  parentCommentId: row.parent_comment_id || null,
   body: row.body,
   authorId: row.author_id,
   createdAt: row.created_at,
@@ -258,6 +262,7 @@ export async function writeDb(data: AppDb): Promise<void> {
   await replaceTable('app_wiki_comments', 'id', data.wikiComments.map((comment) => ({
     id: comment.id,
     entry_id: comment.entryId,
+    parent_comment_id: comment.parentCommentId,
     body: comment.body,
     author_id: comment.authorId,
     created_at: comment.createdAt,
@@ -274,6 +279,7 @@ export async function writeDb(data: AppDb): Promise<void> {
   await replaceTable('app_comments', 'id', data.comments.map((comment) => ({
     id: comment.id,
     thread_id: comment.threadId,
+    parent_comment_id: comment.parentCommentId,
     body: comment.body,
     author_id: comment.authorId,
     created_at: comment.createdAt,
