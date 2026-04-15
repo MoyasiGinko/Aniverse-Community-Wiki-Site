@@ -4,8 +4,50 @@ import { readDb, type Role, type UserRecord } from './db';
 
 export const SESSION_COOKIE = 'aniverse_session';
 
+const PASSWORD_SALT_BYTES = 16;
+const PASSWORD_KEY_LEN = 64;
+
 export function hashPassword(input: string): string {
+  const salt = crypto.randomBytes(PASSWORD_SALT_BYTES).toString('hex');
+  const derived = crypto.scryptSync(input, salt, PASSWORD_KEY_LEN).toString('hex');
+  return `scrypt:${salt}:${derived}`;
+}
+
+function hashLegacyPassword(input: string): string {
   return crypto.createHash('sha256').update(input).digest('hex');
+}
+
+export function verifyPassword(input: string, stored: string): boolean {
+  if (!stored) {
+    return false;
+  }
+
+  if (stored.startsWith('scrypt:')) {
+    const [, salt, hash] = stored.split(':');
+    if (!salt || !hash) {
+      return false;
+    }
+    const derived = crypto.scryptSync(input, salt, PASSWORD_KEY_LEN).toString('hex');
+    return crypto.timingSafeEqual(Buffer.from(derived, 'hex'), Buffer.from(hash, 'hex'));
+  }
+
+  return hashLegacyPassword(input) === stored;
+}
+
+export function validatePasswordStrength(password: string): string | null {
+  const checks = [
+    password.length >= 10,
+    /[A-Z]/.test(password),
+    /[a-z]/.test(password),
+    /\d/.test(password),
+    /[^\w\s]/.test(password),
+  ];
+
+  if (checks.every(Boolean)) {
+    return null;
+  }
+
+  return 'Password must be at least 10 chars and include uppercase, lowercase, number, and symbol.';
 }
 
 export function issueToken(): string {

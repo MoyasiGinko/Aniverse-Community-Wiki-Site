@@ -7,7 +7,7 @@ export interface UserRecord {
   email: string;
   username: string;
   passwordHash: string;
-  provider: 'local' | 'google' | 'discord';
+  provider: 'local' | 'google' | 'discord' | 'facebook' | 'github';
   role: Role;
   bio: string;
   avatarUrl: string;

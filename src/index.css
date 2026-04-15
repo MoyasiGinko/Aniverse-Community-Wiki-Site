@@ -171,6 +171,38 @@ a {
   justify-content: flex-end;
 }
 
+.account-menu {
+  position: relative;
+}
+
+.account-trigger {
+  min-height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 80%, var(--brand) 8%);
+  color: var(--brand-strong);
+  font-weight: 700;
+}
+
+.account-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 210px;
+  padding: 0.5rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--elev-2);
+  z-index: 50;
+}
+
+.account-dropdown.open {
+  display: grid;
+  gap: 0.25rem;
+}
+
 .nav-link {
   padding: 0.48rem 0.72rem;
   border-radius: 10px;
@@ -202,6 +234,20 @@ a {
   color: #fff;
   font-weight: 600;
   transition: transform 220ms ease, box-shadow 220ms ease, background-color 220ms ease;
+}
+
+.nav-logout {
+  border: 1px solid color-mix(in srgb, #fff 30%, transparent);
+}
+
+.nav-user-pill {
+  padding: 0.3rem 0.64rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 80%, var(--brand) 8%);
+  color: var(--brand-strong);
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
 .nav-cta:hover,
@@ -281,6 +327,92 @@ a {
 .pill-list {
   display: flex;
   flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.auth-layout {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: var(--space-3);
+}
+
+.auth-panel {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+}
+
+.auth-form-grid {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.auth-switch {
+  background: color-mix(in srgb, var(--surface) 86%, var(--brand) 6%);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.35rem;
+}
+
+.auth-switch button {
+  flex: 1;
+  background: transparent;
+  color: var(--brand-strong);
+  border: 1px solid transparent;
+}
+
+.auth-switch button.active {
+  background: var(--brand);
+  color: #fff;
+}
+
+.oauth-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.workspace-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: var(--space-3);
+}
+
+.workspace-sidebar {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  height: fit-content;
+  position: sticky;
+  top: 94px;
+}
+
+.workspace-link {
+  text-align: left;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--brand-strong);
+}
+
+.workspace-link.active {
+  background: var(--brand);
+  color: #fff;
+}
+
+.workspace-content {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.dashboard-card {
+  display: grid;
+  align-content: start;
   gap: var(--space-2);
 }
 
@@ -643,8 +775,15 @@ button:hover {
 
   .quick-grid,
   .genre-grid,
-  .stats-grid {
+  .stats-grid,
+  .dashboard-grid,
+  .auth-layout,
+  .workspace-layout {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .workspace-sidebar {
+    position: static;
   }
 
   .footer-shell {
@@ -669,8 +808,16 @@ button:hover {
   .media-grid.compact,
   .quick-grid,
   .genre-grid,
-  .stats-grid {
+  .stats-grid,
+  .dashboard-grid,
+  .auth-layout,
+  .oauth-grid,
+  .workspace-layout {
     grid-template-columns: 1fr;
+  }
+
+  .account-dropdown {
+    position: static;
   }
 
   .search-panel {

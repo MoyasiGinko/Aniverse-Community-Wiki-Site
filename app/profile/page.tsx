@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiRequest } from '../../src/lib/apiClient';
+import { useAuth } from '../../src/context/AuthContext';
 
 type Profile = {
   id: string;
@@ -16,6 +17,7 @@ type Profile = {
 
 export default function ProfilePage() {
   const router = useRouter();
+  const { user, loading, logout, setUser, refreshUser } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [watchlist, setWatchlist] = useState<Array<{ animeId: string; title: string }>>([]);
   const [error, setError] = useState('');
@@ -23,8 +25,14 @@ export default function ProfilePage() {
   useEffect(() => {
     const load = async () => {
       try {
+        const active = await refreshUser();
+        if (!active) {
+          router.push('/auth');
+          return;
+        }
         const me = await apiRequest<{ profile: Profile }>('/api/profile');
         setProfile(me.profile);
+        setUser(me.profile);
         const list = await apiRequest<{ items: Array<{ animeId: string; title: string }> }>('/api/watchlist');
         setWatchlist(list.items);
       } catch {
@@ -33,12 +41,13 @@ export default function ProfilePage() {
     };
 
     load();
-  }, [router]);
+  }, [router, refreshUser, setUser]);
 
-  const logout = async () => {
+  const onLogout = async () => {
     try {
-      await apiRequest('/api/auth/logout', { method: 'POST' });
+      await logout();
       router.push('/auth');
+      router.refresh();
     } catch (err) {
       setError((err as Error).message);
     }
@@ -50,16 +59,17 @@ export default function ProfilePage() {
         <h1>My Profile</h1>
         <p>Manage account identity and track your watchlist activity.</p>
       </section>
-      {profile ? (
+      {profile || user ? (
         <>
           <section className="section-block">
-            <p><strong>{profile.username}</strong> ({profile.role})</p>
-            <p>{profile.email}</p>
-            <p>{profile.bio || 'No bio set yet.'}</p>
+            <p><strong>{(profile || user)?.username}</strong> ({(profile || user)?.role})</p>
+            <p>{(profile || user)?.email}</p>
+            <p>{(profile || user)?.bio || 'No bio set yet.'}</p>
           </section>
           <div className="inline-actions">
-            <Link href="/profile/edit">Edit Profile</Link>
-            <button type="button" onClick={logout}>Logout</button>
+            <Link href="/dashboard">Dashboard</Link>
+            <Link href="/settings?tab=profile">Edit Profile</Link>
+            <button type="button" onClick={onLogout}>Logout</button>
           </div>
 
           <section className="section-block list-panel">
@@ -76,7 +86,7 @@ export default function ProfilePage() {
           </section>
         </>
       ) : (
-        <p>Loading profile...</p>
+        <p>{loading ? 'Loading profile...' : 'Preparing profile...'}</p>
       )}
       {error ? <p className="error-text">{error}</p> : null}
     </main>

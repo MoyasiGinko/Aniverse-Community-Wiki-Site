@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { hashPassword, issueToken, publicUser, SESSION_COOKIE } from '../../../../src/lib/auth';
+import { issueToken, publicUser, SESSION_COOKIE, verifyPassword } from '../../../../src/lib/auth';
 import { updateDb } from '../../../../src/lib/db';
 
 export async function POST(req: Request) {
@@ -10,14 +10,13 @@ export async function POST(req: Request) {
   }
 
   const email = payload.email.trim().toLowerCase();
-  const hash = hashPassword(payload.password);
   const token = issueToken();
 
   let foundUserId = '';
   let publicPayload: ReturnType<typeof publicUser> | null = null;
 
   await updateDb((db) => {
-    const user = db.users.find((entry) => entry.email === email && entry.passwordHash === hash);
+    const user = db.users.find((entry) => entry.email === email && verifyPassword(payload.password as string, entry.passwordHash));
     if (!user) {
       return db;
     }
@@ -39,6 +38,12 @@ export async function POST(req: Request) {
   }
 
   const res = NextResponse.json({ user: publicPayload });
-  res.cookies.set(SESSION_COOKIE, token, { httpOnly: true, sameSite: 'lax', path: '/' });
+  res.cookies.set(SESSION_COOKIE, token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 60 * 60 * 24 * 7,
+  });
   return res;
 }

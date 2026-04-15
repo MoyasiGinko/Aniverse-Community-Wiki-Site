@@ -4,9 +4,15 @@ import { issueToken, publicUser, SESSION_COOKIE } from '../../../../src/lib/auth
 import { updateDb, type UserRecord } from '../../../../src/lib/db';
 
 export async function POST(req: Request) {
-  const payload = (await req.json()) as { provider?: 'google' | 'discord'; email?: string; username?: string };
+  const payload = (await req.json()) as {
+    provider?: 'google' | 'discord' | 'facebook' | 'github';
+    email?: string;
+    username?: string;
+  };
 
-  if (!payload.provider || !payload.email) {
+  const allowedProviders = new Set(['google', 'discord', 'facebook', 'github']);
+
+  if (!payload.provider || !allowedProviders.has(payload.provider) || !payload.email) {
     return NextResponse.json({ error: 'provider and email are required' }, { status: 400 });
   }
 
@@ -49,6 +55,12 @@ export async function POST(req: Request) {
   });
 
   const res = NextResponse.json({ user: activeUser ? publicUser(activeUser) : null });
-  res.cookies.set(SESSION_COOKIE, token, { httpOnly: true, sameSite: 'lax', path: '/' });
+  res.cookies.set(SESSION_COOKIE, token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 60 * 60 * 24 * 7,
+  });
   return res;
 }

@@ -19,7 +19,7 @@ export async function PUT(req: Request) {
 
   const payload = (await req.json()) as { username?: string; bio?: string; avatarUrl?: string };
 
-  await updateDb((db) => ({
+  const next = await updateDb((db) => ({
     ...db,
     users: db.users.map((entry) => {
       if (entry.id !== user.id) {
@@ -34,5 +34,6 @@ export async function PUT(req: Request) {
     }),
   }));
 
-  return NextResponse.json({ ok: true });
+  const updated = next.users.find((entry) => entry.id === user.id);
+  return NextResponse.json({ ok: true, profile: updated ? publicUser(updated) : publicUser(user) });
 }

@@ -8,7 +8,7 @@ create table if not exists public.app_users (
   email text not null unique,
   username text not null,
   password_hash text not null default '',
-  provider text not null check (provider in ('local', 'google', 'discord')),
+  provider text not null check (provider in ('local', 'google', 'discord', 'facebook', 'github')),
   role text not null check (role in ('user', 'mod', 'admin')) default 'user',
   bio text not null default '',
   avatar_url text not null default '',

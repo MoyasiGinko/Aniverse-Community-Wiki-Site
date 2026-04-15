@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { NextResponse } from 'next/server';
-import { hashPassword, issueToken, publicUser, SESSION_COOKIE } from '../../../../src/lib/auth';
+import { hashPassword, issueToken, publicUser, SESSION_COOKIE, validatePasswordStrength } from '../../../../src/lib/auth';
 import { updateDb } from '../../../../src/lib/db';
 
 export async function POST(req: Request) {
@@ -16,6 +16,24 @@ export async function POST(req: Request) {
 
   const email = payload.email.trim().toLowerCase();
   const username = payload.username.trim();
+  const passwordError = validatePasswordStrength(payload.password);
+
+  if (!email.includes('@')) {
+    return NextResponse.json({ error: 'Please provide a valid email.' }, { status: 400 });
+  }
+
+  if (username.length < 3 || username.length > 24) {
+    return NextResponse.json({ error: 'Username must be between 3 and 24 characters.' }, { status: 400 });
+  }
+
+  if (!/^[a-zA-Z0-9_.-]+$/.test(username)) {
+    return NextResponse.json({ error: 'Username can only contain letters, numbers, _, -, and .' }, { status: 400 });
+  }
+
+  if (passwordError) {
+    return NextResponse.json({ error: passwordError }, { status: 400 });
+  }
+
   const passwordHash = hashPassword(payload.password);
 
   const userId = crypto.randomUUID();
@@ -35,6 +53,10 @@ export async function POST(req: Request) {
 
   const next = await updateDb((db) => {
     if (db.users.some((entry) => entry.email === email)) {
+      return db;
+    }
+
+    if (db.users.some((entry) => entry.username.toLowerCase() === username.toLowerCase())) {
       return db;
     }
 
@@ -58,10 +80,16 @@ export async function POST(req: Request) {
   });
 
   if (!createdUser) {
-    return NextResponse.json({ error: 'Account already exists' }, { status: 409 });
+    return NextResponse.json({ error: 'Account already exists or username is taken' }, { status: 409 });
   }
 
   const res = NextResponse.json({ user: publicUser(createdUser) }, { status: 201 });
-  res.cookies.set(SESSION_COOKIE, token, { httpOnly: true, sameSite: 'lax', path: '/' });
+  res.cookies.set(SESSION_COOKIE, token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 60 * 60 * 24 * 7,
+  });
   return res;
 }
