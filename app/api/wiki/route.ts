@@ -27,6 +27,10 @@ export async function POST(req: Request) {
     body?: string;
     tags?: string[];
     status?: WikiRecord['status'];
+    malAnimeId?: number | null;
+    malAnimeTitle?: string;
+    coverImageUrl?: string;
+    extraImageUrls?: string[];
   };
 
   if (!payload.title || !payload.body) {
@@ -45,6 +49,10 @@ export async function POST(req: Request) {
     body: payload.body,
     tags: payload.tags || [],
     status: payload.status || 'draft',
+    malAnimeId: payload.malAnimeId ?? null,
+    malAnimeTitle: payload.malAnimeTitle?.trim() || '',
+    coverImageUrl: payload.coverImageUrl?.trim() || '',
+    extraImageUrls: (payload.extraImageUrls || []).map((item) => item.trim()).filter(Boolean),
     authorId: user.id,
     revision: 1,
     createdAt: new Date().toISOString(),

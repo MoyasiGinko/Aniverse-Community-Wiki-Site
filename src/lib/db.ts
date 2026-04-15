@@ -35,10 +35,22 @@ export interface WikiRecord {
   body: string;
   tags: string[];
   status: 'draft' | 'published' | 'flagged' | 'archived';
+  malAnimeId: number | null;
+  malAnimeTitle: string;
+  coverImageUrl: string;
+  extraImageUrls: string[];
   authorId: string;
   updatedAt: string;
   createdAt: string;
   revision: number;
+}
+
+export interface WikiCommentRecord {
+  id: string;
+  entryId: string;
+  body: string;
+  authorId: string;
+  createdAt: string;
 }
 
 export interface CommunityThreadRecord {
@@ -71,6 +83,7 @@ export interface AppDb {
   sessions: SessionRecord[];
   watchlist: WatchlistRecord[];
   wiki: WikiRecord[];
+  wikiComments: WikiCommentRecord[];
   threads: CommunityThreadRecord[];
   comments: CommunityCommentRecord[];
   reports: ReportRecord[];
@@ -109,6 +122,10 @@ const toWiki = (row: any): WikiRecord => ({
   body: row.body,
   tags: row.tags || [],
   status: row.status,
+  malAnimeId: row.mal_anime_id ?? null,
+  malAnimeTitle: row.mal_anime_title || '',
+  coverImageUrl: row.cover_image_url || '',
+  extraImageUrls: row.extra_image_urls || [],
   authorId: row.author_id,
   updatedAt: row.updated_at,
   createdAt: row.created_at,
@@ -118,6 +135,14 @@ const toWiki = (row: any): WikiRecord => ({
 const toThread = (row: any): CommunityThreadRecord => ({
   id: row.id,
   title: row.title,
+  body: row.body,
+  authorId: row.author_id,
+  createdAt: row.created_at,
+});
+
+const toWikiComment = (row: any): WikiCommentRecord => ({
+  id: row.id,
+  entryId: row.entry_id,
   body: row.body,
   authorId: row.author_id,
   createdAt: row.created_at,
@@ -163,11 +188,12 @@ async function replaceTable(table: string, idColumn: string, rows: Record<string
 }
 
 export async function readDb(): Promise<AppDb> {
-  const [users, sessions, watchlist, wiki, threads, comments, reports] = await Promise.all([
+  const [users, sessions, watchlist, wiki, wikiComments, threads, comments, reports] = await Promise.all([
     mustSelect('app_users'),
     mustSelect('app_sessions'),
     mustSelect('app_watchlist'),
     mustSelect('app_wiki_entries'),
+    mustSelect('app_wiki_comments'),
     mustSelect('app_threads'),
     mustSelect('app_comments'),
     mustSelect('app_reports'),
@@ -178,6 +204,7 @@ export async function readDb(): Promise<AppDb> {
     sessions: sessions.map(toSession),
     watchlist: watchlist.map(toWatchlist),
     wiki: wiki.map(toWiki),
+    wikiComments: wikiComments.map(toWikiComment),
     threads: threads.map(toThread),
     comments: comments.map(toComment),
     reports: reports.map(toReport),
@@ -218,10 +245,22 @@ export async function writeDb(data: AppDb): Promise<void> {
     body: entry.body,
     tags: entry.tags,
     status: entry.status,
+    mal_anime_id: entry.malAnimeId,
+    mal_anime_title: entry.malAnimeTitle,
+    cover_image_url: entry.coverImageUrl,
+    extra_image_urls: entry.extraImageUrls,
     author_id: entry.authorId,
     updated_at: entry.updatedAt,
     created_at: entry.createdAt,
     revision: entry.revision,
+  })));
+
+  await replaceTable('app_wiki_comments', 'id', data.wikiComments.map((comment) => ({
+    id: comment.id,
+    entry_id: comment.entryId,
+    body: comment.body,
+    author_id: comment.authorId,
+    created_at: comment.createdAt,
   })));
 
   await replaceTable('app_threads', 'id', data.threads.map((thread) => ({

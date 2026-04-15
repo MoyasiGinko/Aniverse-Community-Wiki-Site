@@ -21,7 +21,16 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   }
 
   const { id } = await params;
-  const payload = (await req.json()) as { title?: string; body?: string; tags?: string[]; status?: string };
+  const payload = (await req.json()) as {
+    title?: string;
+    body?: string;
+    tags?: string[];
+    status?: string;
+    malAnimeId?: number | null;
+    malAnimeTitle?: string;
+    coverImageUrl?: string;
+    extraImageUrls?: string[];
+  };
 
   let updated = false;
 
@@ -43,6 +52,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         body: payload.body ?? entry.body,
         tags: payload.tags ?? entry.tags,
         status: (payload.status as typeof entry.status) ?? entry.status,
+        malAnimeId: payload.malAnimeId ?? entry.malAnimeId,
+        malAnimeTitle: payload.malAnimeTitle ?? entry.malAnimeTitle,
+        coverImageUrl: payload.coverImageUrl ?? entry.coverImageUrl,
+        extraImageUrls: payload.extraImageUrls ?? entry.extraImageUrls,
         revision: entry.revision + 1,
         updatedAt: new Date().toISOString(),
       };

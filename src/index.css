@@ -410,6 +410,309 @@ a {
   gap: var(--space-3);
 }
 
+.portal-layout {
+  align-items: start;
+}
+
+.portal-card {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.portal-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.portal-toolbar-controls {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.portal-toolbar-controls input,
+.portal-toolbar-controls select {
+  min-width: 220px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.58rem 0.7rem;
+  background: transparent;
+  color: var(--text);
+}
+
+.dual-pane {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) 1fr;
+  gap: var(--space-3);
+}
+
+.dual-pane ul {
+  list-style: none;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.portal-preview {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.pipeline-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.pipeline-grid article {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-soft);
+  padding: 0.9rem;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.pipeline-grid ul {
+  list-style: none;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.thread-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-soft);
+  padding: 0.85rem;
+}
+
+.wiki-fandom-page {
+  --wiki-serif: 'Merriweather', Georgia, 'Times New Roman', serif;
+}
+
+.wiki-fandom-page h1,
+.wiki-fandom-page h2,
+.wiki-fandom-page h3,
+.wiki-fandom-page .wiki-article-title {
+  font-family: var(--wiki-serif);
+  letter-spacing: 0.01em;
+}
+
+.wiki-shell {
+  display: grid;
+  grid-template-columns: minmax(240px, 300px) 1fr;
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.wiki-sidebar-panel {
+  display: grid;
+  gap: var(--space-3);
+  position: sticky;
+  top: 94px;
+}
+
+.wiki-anchor {
+  color: var(--brand-strong);
+  font-weight: 600;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  padding-bottom: 0.35rem;
+}
+
+.wiki-anchor:hover {
+  color: var(--brand);
+}
+
+.wiki-sidebar-list {
+  list-style: none;
+  display: grid;
+  gap: 0.42rem;
+}
+
+.wiki-main-panel {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.wiki-discovery-bar {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.wiki-featured {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--surface) 84%, #fff), color-mix(in srgb, var(--surface-soft) 94%, #fff));
+}
+
+.wiki-featured-card {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.wiki-article-index ul {
+  list-style: none;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.wiki-article-row {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface) 88%, var(--surface-soft));
+  padding: 0.9rem;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-2);
+}
+
+.wiki-article-leading {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.wiki-thumb,
+.wiki-feature-banner {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 1.45rem;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.2);
+  flex-shrink: 0;
+}
+
+.wiki-feature-banner {
+  width: 100%;
+  height: 140px;
+  border-radius: 14px;
+  margin-bottom: 0.4rem;
+}
+
+.wiki-feature-banner span {
+  font-size: clamp(2rem, 5vw, 3.8rem);
+  font-family: var(--wiki-serif);
+}
+
+.wiki-comment-row {
+  display: grid;
+  gap: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-soft);
+  padding: 0.72rem;
+}
+
+.wiki-detail-body {
+  white-space: pre-wrap;
+  line-height: 1.7;
+  font-size: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface) 90%, var(--surface-soft));
+  padding: 1rem;
+}
+
+.wiki-anime-search {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-2);
+}
+
+.wiki-anime-results {
+  list-style: none;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.wiki-anime-option {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  align-items: center;
+  gap: var(--space-2);
+  text-align: left;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.wiki-anime-option span,
+.wiki-anime-option small {
+  display: block;
+}
+
+.wiki-anime-option small {
+  color: var(--muted);
+}
+
+.wiki-anime-thumb,
+.wiki-selected-cover,
+.wiki-detail-cover,
+.wiki-banner-image,
+.wiki-thumb-image,
+.wiki-gallery-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+.wiki-anime-thumb {
+  width: 58px;
+  height: 58px;
+  border-radius: 10px;
+}
+
+.wiki-selected-anime {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-soft);
+  padding: 0.7rem;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.wiki-selected-cover,
+.wiki-detail-cover {
+  max-height: 280px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.wiki-gallery {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.wiki-gallery-image {
+  height: 140px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+.wiki-article-title {
+  font-size: 1.06rem;
+  color: var(--brand-strong);
+  font-weight: 700;
+}
+
+.wiki-article-meta {
+  display: grid;
+  align-content: start;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-size: 0.86rem;
+  text-align: right;
+  min-width: 160px;
+}
+
 .dashboard-card {
   display: grid;
   align-content: start;
@@ -782,6 +1085,19 @@ button:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .pipeline-grid,
+  .dual-pane {
+    grid-template-columns: 1fr;
+  }
+
+  .wiki-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .wiki-sidebar-panel {
+    position: static;
+  }
+
   .workspace-sidebar {
     position: static;
   }
@@ -814,6 +1130,29 @@ button:hover {
   .oauth-grid,
   .workspace-layout {
     grid-template-columns: 1fr;
+  }
+
+  .portal-toolbar-controls input,
+  .portal-toolbar-controls select {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .wiki-article-row {
+    grid-template-columns: 1fr;
+  }
+
+  .wiki-anime-search {
+    grid-template-columns: 1fr;
+  }
+
+  .wiki-gallery {
+    grid-template-columns: 1fr;
+  }
+
+  .wiki-article-meta {
+    text-align: left;
+    min-width: 0;
   }
 
   .account-dropdown {
