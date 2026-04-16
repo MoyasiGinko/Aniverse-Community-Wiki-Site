@@ -2,8 +2,8 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { apiRequest } from '../../src/lib/apiClient';
-import { useAuth } from '../../src/context/AuthContext';
+import { apiRequest } from '@/src/lib/apiClient';
+import { useAuth } from '@/src/context/AuthContext';
 
 type SettingsTab = 'profile' | 'security' | 'preferences';
 

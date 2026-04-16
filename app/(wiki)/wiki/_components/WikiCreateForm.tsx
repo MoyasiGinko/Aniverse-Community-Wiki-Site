@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from 'react';
-import { apiRequest } from '../../../src/lib/apiClient';
+import { apiRequest } from '@/src/lib/apiClient';
 
 type MalAnime = {
   malId: number;

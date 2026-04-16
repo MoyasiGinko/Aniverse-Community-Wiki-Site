@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getSessionUser, publicUser } from '../../../src/lib/auth';
-import { updateDb } from '../../../src/lib/db';
+import { getSessionUser, publicUser } from '@/src/lib/auth';
+import { updateDb } from '@/src/lib/db';
 
 export async function GET() {
   const user = await getSessionUser();

@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiRequest } from '../../src/lib/apiClient';
-import { useAuth } from '../../src/context/AuthContext';
+import { apiRequest } from '@/src/lib/apiClient';
+import { useAuth } from '@/src/context/AuthContext';
 
 type WatchlistItem = {
   animeId: string;

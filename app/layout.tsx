@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import Providers from '../src/providers';
-import NavBar from '../src/components/NavBar';
-import Footer from '../src/components/Footer';
-import '../src/index.css';
+import Providers from '@/src/providers';
+import NavBar from '@/src/components/NavBar';
+import Footer from '@/src/components/Footer';
+import '@/src/index.css';
 
 export const metadata: Metadata = {
   title: 'Aniverse',

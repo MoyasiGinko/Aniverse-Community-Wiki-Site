@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getSessionUser, hashPassword, validatePasswordStrength, verifyPassword } from '../../../../src/lib/auth';
-import { updateDb } from '../../../../src/lib/db';
+import { getSessionUser, hashPassword, validatePasswordStrength, verifyPassword } from '@/src/lib/auth';
+import { updateDb } from '@/src/lib/db';
 
 export async function PUT(req: Request) {
   const user = await getSessionUser();

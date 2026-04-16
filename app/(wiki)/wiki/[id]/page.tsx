@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { apiRequest } from '../../../src/lib/apiClient';
-import ProgressiveImage from '../../../src/components/ProgressiveImage';
+import { apiRequest } from '@/src/lib/apiClient';
+import ProgressiveImage from '@/src/components/ProgressiveImage';
 import WikiComments from '../_components/WikiComments';
 import WikiThreads from '../_components/WikiThreads';
 import AnimeReferenceCard from '../_components/AnimeReferenceCard';
@@ -128,7 +128,7 @@ export default function WikiEntryPage() {
               {discussionTab === 'comments' ? (
                 <WikiComments entryId={entry.id} />
               ) : (
-                <WikiThreads />
+                <WikiThreads entryId={entry.id} />
               )}
             </section>
 

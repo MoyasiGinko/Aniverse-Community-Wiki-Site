@@ -1,236 +1,295 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from 'react';
-import { apiRequest } from '../../src/lib/apiClient';
+import Link from "next/link";
+import { FormEvent, useEffect, useState } from "react";
+import { apiRequest } from "@/src/lib/apiClient";
 
-type Thread = { id: string; title: string; body: string; createdAt?: string };
-type Comment = { id: string; threadId: string; body: string; createdAt?: string };
-type CommunityPanel = 'overview' | 'feed' | 'create' | 'live';
+type Community = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  category: string;
+  memberCount: number;
+  joined: boolean;
+};
 
-export default function CommunityPage() {
-  const [panel, setPanel] = useState<CommunityPanel>('overview');
+type Thread = {
+  id: string;
+  title: string;
+  body: string;
+  createdAt?: string;
+  communityId: string | null;
+};
+
+export default function CommunitiesIndexPage() {
+  const [communities, setCommunities] = useState<Community[]>([]);
   const [threads, setThreads] = useState<Thread[]>([]);
-  const [activeThread, setActiveThread] = useState<Thread | null>(null);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [search, setSearch] = useState('');
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
-  const [commentBody, setCommentBody] = useState('');
-  const [info, setInfo] = useState('');
-  const [error, setError] = useState('');
+  const [search, setSearch] = useState("");
+  const [showSearchResults, setShowSearchResults] = useState(false);
 
-  const loadThreads = async () => {
-    const data = await apiRequest<{ threads: Thread[] }>('/api/community/threads');
-    setThreads(data.threads);
-  };
+  // Create state
+  const [showCreate, setShowCreate] = useState(false);
+  const [slug, setSlug] = useState("");
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("");
 
-  const loadComments = async (threadId: string) => {
-    const data = await apiRequest<{ comments: Comment[] }>(`/api/community/threads/${threadId}/comments`);
-    setComments(data.comments);
+  const [info, setInfo] = useState("");
+  const [error, setError] = useState("");
+
+  const loadData = async () => {
+    try {
+      const [communitiesData, threadsData] = await Promise.all([
+        apiRequest<{ communities: Community[] }>("/api/communities"),
+        apiRequest<{ threads: Thread[] }>("/api/community/threads"),
+      ]);
+      setCommunities(communitiesData.communities);
+      setThreads(threadsData.threads);
+    } catch (err) {
+      setError((err as Error).message);
+    }
   };
 
   useEffect(() => {
-    loadThreads().catch((err) => setError((err as Error).message));
+    loadData();
   }, []);
 
-  const createThread = async (e: FormEvent) => {
+  const createCommunity = async (e: FormEvent) => {
     e.preventDefault();
-    setError('');
-    setInfo('');
+    setError("");
+    setInfo("");
     try {
-      await apiRequest('/api/community/threads', {
-        method: 'POST',
-        body: JSON.stringify({ title, body }),
+      await apiRequest("/api/communities", {
+        method: "POST",
+        body: JSON.stringify({ slug, name, description, category }),
       });
-      setTitle('');
-      setBody('');
-      setPanel('feed');
-      setInfo('Thread published successfully.');
-      await loadThreads();
+      setSlug("");
+      setName("");
+      setDescription("");
+      setCategory("");
+      setShowCreate(false);
+      setInfo("Community perfectly created!");
+      await loadData();
     } catch (err) {
       setError((err as Error).message);
     }
   };
 
-  const createComment = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!activeThread) return;
+  const filteredCommunities = communities.filter(
+    (c) =>
+      c.name.toLowerCase().includes(search.trim().toLowerCase()) ||
+      c.slug.toLowerCase().includes(search.trim().toLowerCase()) ||
+      c.category.toLowerCase().includes(search.trim().toLowerCase()),
+  );
 
-    setError('');
-    setInfo('');
-    try {
-      await apiRequest(`/api/community/threads/${activeThread.id}/comments`, {
-        method: 'POST',
-        body: JSON.stringify({ body: commentBody }),
-      });
-      setCommentBody('');
-      setInfo('Comment posted.');
-      await loadComments(activeThread.id);
-    } catch (err) {
-      setError((err as Error).message);
-    }
-  };
-
-  const report = async (type: 'thread' | 'comment', targetId: string) => {
-    try {
-      await apiRequest('/api/community/reports', {
-        method: 'POST',
-        body: JSON.stringify({ type, targetId, reason: 'Community guideline violation' }),
-      });
-      setInfo('Report sent to moderators.');
-    } catch (err) {
-      setError((err as Error).message);
-    }
-  };
-
-  const filteredThreads = threads.filter((thread) => {
-    const searchIn = `${thread.title} ${thread.body}`.toLowerCase();
-    return searchIn.includes(search.trim().toLowerCase());
-  });
-
-  const topThread = threads[0] || null;
-
-  const renderPanel = () => {
-    if (panel === 'overview') {
-      return (
-        <section className="section-block portal-card">
-          <h2>Community Overview</h2>
-          <p className="meta-line">Engagement metrics and conversation health at a glance.</p>
-          <div className="stats-grid">
-            <div><span>Total Threads</span><strong>{threads.length}</strong></div>
-            <div><span>Total Comments</span><strong>{comments.length}</strong></div>
-            <div><span>Active Thread</span><strong>{activeThread ? 'Yes' : 'No'}</strong></div>
-            <div><span>Average Thread Length</span><strong>{threads.length ? Math.round(threads.reduce((sum, thread) => sum + thread.body.length, 0) / threads.length) : 0}</strong></div>
-            <div><span>Filtered Results</span><strong>{filteredThreads.length}</strong></div>
-            <div><span>Reports Channel</span><strong>Enabled</strong></div>
-          </div>
-          {topThread ? (
-            <article className="section-block portal-preview">
-              <h3>Most Recent Thread</h3>
-              <p><strong>{topThread.title}</strong></p>
-              <p>{topThread.body.slice(0, 180)}{topThread.body.length > 180 ? '...' : ''}</p>
-            </article>
-          ) : null}
-        </section>
-      );
-    }
-
-    if (panel === 'feed') {
-      return (
-        <section className="section-block portal-card list-panel">
-          <div className="portal-toolbar">
-            <h2>Discussion Feed</h2>
-            <div className="portal-toolbar-controls">
-              <input
-                aria-label="Search threads"
-                placeholder="Search threads"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <ul className="thread-list">
-            {filteredThreads.length ? filteredThreads.map((thread) => (
-              <li key={thread.id} className="thread-row thread-card">
-                <div>
-                  <h3>{thread.title}</h3>
-                  <p>{thread.body.slice(0, 160)}{thread.body.length > 160 ? '...' : ''}</p>
-                </div>
-                <div className="inline-actions">
-                  <button
-                    type="button"
-                    className="action-button ghost"
-                    onClick={() => {
-                      setActiveThread(thread);
-                      setPanel('live');
-                      loadComments(thread.id).catch((err) => setError((err as Error).message));
-                    }}
-                  >
-                    Open
-                  </button>
-                  <button type="button" onClick={() => report('thread', thread.id)}>Report</button>
-                </div>
-              </li>
-            )) : <li>No threads match the current query.</li>}
-          </ul>
-        </section>
-      );
-    }
-
-    if (panel === 'create') {
-      return (
-        <section className="section-block portal-card">
-          <h2>Start a Discussion</h2>
-          <p className="meta-line">Kick off high-quality conversations with clear context.</p>
-          <form className="feature-form auth-form-grid" onSubmit={createThread}>
-            <label htmlFor="thread-title">Thread title</label>
-            <input id="thread-title" value={title} onChange={(e) => setTitle(e.target.value)} required />
-
-            <label htmlFor="thread-body">Thread body</label>
-            <textarea id="thread-body" value={body} onChange={(e) => setBody(e.target.value)} rows={6} required />
-
-            <button type="submit">Publish Thread</button>
-          </form>
-        </section>
-      );
-    }
-
-    return (
-      <section className="section-block portal-card list-panel">
-        <h2>Live Thread Room</h2>
-        {activeThread ? (
-          <>
-            <article className="section-block portal-preview">
-              <h3>{activeThread.title}</h3>
-              <p>{activeThread.body}</p>
-            </article>
-
-            <form className="feature-form auth-form-grid" onSubmit={createComment}>
-              <label htmlFor="comment">Your Reply</label>
-              <textarea id="comment" value={commentBody} onChange={(e) => setCommentBody(e.target.value)} rows={4} required />
-              <button type="submit">Post Comment</button>
-            </form>
-
-            <ul className="comment-list">
-              {comments.map((comment) => (
-                <li key={comment.id}>
-                  <span>{comment.body}</span>
-                  <button type="button" onClick={() => report('comment', comment.id)}>Report</button>
-                </li>
-              ))}
-            </ul>
-          </>
-        ) : (
-          <p>Select a thread in feed to open the live discussion room.</p>
-        )}
-      </section>
-    );
-  };
+  const searchResults = search.trim() ? filteredCommunities.slice(0, 8) : [];
+  const topCommunities = communities.slice(0, 10);
+  const communityById = new Map(communities.map((c) => [c.id, c]));
 
   return (
-    <main className="feature-page">
-      <section className="section-header">
+    <main className="feature-page wiki-fandom-page">
+      <section className="section-header fade-in-up">
         <h1>Community Hub</h1>
-        <p>Professional forum experience with structured feed, live threads, and moderation controls.</p>
+        <p>
+          Follow communities, track joined threads feed, and discover top spaces
+          across every interest.
+        </p>
       </section>
 
-      <section className="workspace-layout portal-layout">
-        <aside className="workspace-sidebar section-block">
-          <h3>Community Menu</h3>
-          <button type="button" className={panel === 'overview' ? 'workspace-link active' : 'workspace-link'} onClick={() => setPanel('overview')}>Overview</button>
-          <button type="button" className={panel === 'feed' ? 'workspace-link active' : 'workspace-link'} onClick={() => setPanel('feed')}>Feed</button>
-          <button type="button" className={panel === 'create' ? 'workspace-link active' : 'workspace-link'} onClick={() => setPanel('create')}>Start Thread</button>
-          <button type="button" className={panel === 'live' ? 'workspace-link active' : 'workspace-link'} onClick={() => setPanel('live')}>Live Thread</button>
-        </aside>
+      <div className="portal-toolbar fade-in-up community-search-toolbar">
+        <input
+          placeholder="Search communities..."
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setShowSearchResults(true);
+          }}
+          onFocus={() => setShowSearchResults(true)}
+          onBlur={() => {
+            setTimeout(() => setShowSearchResults(false), 120);
+          }}
+          style={{ width: "100%", maxWidth: "400px" }}
+        />
+        {showSearchResults && searchResults.length ? (
+          <div
+            className="section-block community-search-dropdown"
+            onMouseDown={(e) => {
+              // Keep focus from leaving the input before link click is processed.
+              e.preventDefault();
+            }}
+          >
+            {searchResults.map((community) => (
+              <Link
+                key={community.id}
+                href={`/community/${community.slug}`}
+                className="nav-link"
+                onClick={() => setShowSearchResults(false)}
+                style={{ display: "block", borderRadius: "10px" }}
+              >
+                <strong>{community.name}</strong>
+                <small
+                  style={{
+                    display: "block",
+                    marginTop: "0.15rem",
+                    color: "var(--muted)",
+                  }}
+                >
+                  {community.category} • {community.memberCount} members
+                </small>
+              </Link>
+            ))}
+          </div>
+        ) : null}
+        {!showCreate ? (
+          <button
+            type="button"
+            className="action-button ghost"
+            onClick={() => setShowCreate(true)}
+          >
+            Create Community
+          </button>
+        ) : null}
+      </div>
 
-        <div className="workspace-content">
-          {renderPanel()}
+      {info ? (
+        <p
+          className="success-text fade-in-up"
+          style={{ color: "var(--brand)", marginBottom: "1rem" }}
+        >
+          {info}
+        </p>
+      ) : null}
+      {error ? <p className="error-text fade-in-up">{error}</p> : null}
+
+      {showCreate ? (
+        <form
+          className="feature-form auth-form-grid fade-in-up"
+          onSubmit={createCommunity}
+          style={{ marginBottom: "2rem" }}
+        >
+          <h2>Form a New Guild</h2>
+
+          <label htmlFor="name">Community Name</label>
+          <input
+            id="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            placeholder="e.g. Elden Ring Fans"
+          />
+
+          <label htmlFor="slug">URL Slug (/community/slug)</label>
+          <input
+            id="slug"
+            value={slug}
+            onChange={(e) => setSlug(e.target.value)}
+            required
+            placeholder="elden-ring"
+          />
+
+          <label htmlFor="category">Category</label>
+          <input
+            id="category"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            required
+            placeholder="Gaming"
+          />
+
+          <label htmlFor="desc">Description</label>
+          <textarea
+            id="desc"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+            required
+            placeholder="What is this community about?"
+          />
+
+          <div className="inline-actions">
+            <button type="submit">Establish Community</button>
+            <button
+              type="button"
+              className="action-button ghost"
+              onClick={() => setShowCreate(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : null}
+
+      <section className="fade-in-up community-hub-grid">
+        <div className="section-block portal-card list-panel">
+          <div className="portal-toolbar" style={{ marginBottom: "0.85rem" }}>
+            <h2>Threads From Joined/Following Communities</h2>
+          </div>
+
+          {!threads.length ? (
+            <p className="meta-line">
+              No threads yet from communities you joined/follow.
+            </p>
+          ) : (
+            <ul className="community-feed-list">
+              {threads.map((thread) => {
+                const community = thread.communityId
+                  ? communityById.get(thread.communityId)
+                  : null;
+                return (
+                  <li key={thread.id} className="wiki-comment-row">
+                    <div
+                      className="inline-actions"
+                      style={{ justifyContent: "space-between" }}
+                    >
+                      <strong>{thread.title}</strong>
+                      {community ? (
+                        <Link
+                          className="workspace-link"
+                          href={`/community/${community.slug}`}
+                        >
+                          {community.name}
+                        </Link>
+                      ) : null}
+                    </div>
+                    <p style={{ marginTop: "0.35rem" }}>
+                      {thread.body.length > 180
+                        ? `${thread.body.slice(0, 180)}...`
+                        : thread.body}
+                    </p>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
-      </section>
 
-      {info ? <p>{info}</p> : null}
-      {error ? <p className="error-text">{error}</p> : null}
+        <aside className="section-block portal-card community-top-sidebar">
+          <h2 style={{ marginBottom: "0.75rem" }}>Top Communities</h2>
+          <ul className="community-sidebar-list">
+            {topCommunities.map((community, index) => (
+              <li key={community.id} className="community-sidebar-item">
+                <Link
+                  href={`/community/${community.slug}`}
+                  className="community-sidebar-link"
+                >
+                  <strong>
+                    {index + 1}. {community.name}
+                  </strong>
+                  <small className="community-sidebar-meta">
+                    {community.category} • {community.memberCount} members
+                  </small>
+                  <p className="community-sidebar-description">
+                    {community.description.length > 90
+                      ? `${community.description.slice(0, 90)}...`
+                      : community.description || "No description yet."}
+                  </p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </aside>
+      </section>
     </main>
   );
 }

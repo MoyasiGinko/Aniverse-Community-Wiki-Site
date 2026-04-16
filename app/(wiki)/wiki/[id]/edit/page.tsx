@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { apiRequest } from '../../../../src/lib/apiClient';
+import { apiRequest } from '@/src/lib/apiClient';
 
 type Entry = {
   id: string;

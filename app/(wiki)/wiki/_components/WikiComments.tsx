@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { apiRequest } from '../../../src/lib/apiClient';
+import { apiRequest } from '@/src/lib/apiClient';
 
 type WikiComment = {
   id: string;

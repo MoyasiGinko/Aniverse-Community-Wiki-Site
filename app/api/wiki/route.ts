@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { NextResponse } from 'next/server';
-import { getSessionUser } from '../../../src/lib/auth';
-import { readDb, updateDb, type WikiRecord } from '../../../src/lib/db';
+import { getSessionUser } from '@/src/lib/auth';
+import { readDb, updateDb, type WikiRecord } from '@/src/lib/db';
 
 export const revalidate = 60;
 

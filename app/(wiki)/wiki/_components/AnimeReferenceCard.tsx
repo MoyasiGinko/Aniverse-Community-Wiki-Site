@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { apiRequest } from '../../../src/lib/apiClient';
-import ProgressiveImage from '../../../src/components/ProgressiveImage';
+import { apiRequest } from '@/src/lib/apiClient';
+import ProgressiveImage from '@/src/components/ProgressiveImage';
 
 type MalAnimeDetails = {
   malId: number;

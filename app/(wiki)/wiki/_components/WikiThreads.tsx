@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { apiRequest } from '../../../src/lib/apiClient';
+import { apiRequest } from '@/src/lib/apiClient';
 
 type ThreadComment = {
   id: string;
@@ -26,7 +26,7 @@ function toTree<T extends { id: string; parentCommentId?: string | null }>(items
   return byParent;
 }
 
-export default function WikiThreads() {
+export default function WikiThreads({ entryId }: { entryId: string }) {
   const [threads, setThreads] = useState<CommunityThread[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -48,7 +48,7 @@ export default function WikiThreads() {
   const loadThreads = async () => {
     setLoading(true);
     try {
-      const { threads } = await apiRequest<{ threads: CommunityThread[] }>('/api/community/threads');
+      const { threads } = await apiRequest<{ threads: CommunityThread[] }>(`/api/community/threads?wikiReferenceId=${entryId}`);
       setThreads(threads || []);
     } catch (err) {
       setError((err as Error).message);
@@ -81,7 +81,7 @@ export default function WikiThreads() {
     try {
       const response = await apiRequest<{ thread: CommunityThread }>('/api/community/threads', {
         method: 'POST',
-        body: JSON.stringify({ title: threadTitle, body: threadBody }),
+        body: JSON.stringify({ title: threadTitle, body: threadBody, wikiReferenceId: entryId }),
       });
       setThreadTitle('');
       setThreadBody('');

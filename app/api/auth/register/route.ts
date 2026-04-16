@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { NextResponse } from 'next/server';
-import { hashPassword, issueToken, publicUser, SESSION_COOKIE, validatePasswordStrength } from '../../../../src/lib/auth';
-import { updateDb } from '../../../../src/lib/db';
+import { hashPassword, issueToken, publicUser, SESSION_COOKIE, validatePasswordStrength } from '@/src/lib/auth';
+import { updateDb } from '@/src/lib/db';
 
 export async function POST(req: Request) {
   const payload = (await req.json()) as {

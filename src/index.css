@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Shantell+Sans:wght@300;400;500&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Shantell+Sans:wght@300;400;500&display=swap");
 
 :root {
   --space-1: 0.5rem;
@@ -18,7 +18,7 @@
   --radius-lg: 22px;
   --elev-1: 0 10px 28px rgb(200 77 0 / 0.12);
   --elev-2: 0 18px 42px rgb(200 77 0 / 0.18);
-  font-family: 'Shantell Sans', cursive;
+  font-family: "Shantell Sans", cursive;
   line-height: 1.5;
   font-weight: 400;
   color: var(--text);
@@ -30,7 +30,7 @@
   -webkit-text-size-adjust: 100%;
 }
 
-body[data-theme='dark'] {
+body[data-theme="dark"] {
   --bg: #170f0c;
   --surface: #251712;
   --surface-soft: #311f18;
@@ -51,8 +51,7 @@ body {
   min-height: 100vh;
   background:
     radial-gradient(circle at 0% 10%, #ffd9bd 0%, transparent 45%),
-    radial-gradient(circle at 95% 5%, #ffe6d3 0%, transparent 40%),
-    var(--bg);
+    radial-gradient(circle at 95% 5%, #ffe6d3 0%, transparent 40%), var(--bg);
   color: var(--text);
 }
 
@@ -208,7 +207,10 @@ a {
   border-radius: 10px;
   font-size: 0.93rem;
   color: var(--muted);
-  transition: background-color 220ms ease, color 220ms ease, transform 220ms ease;
+  transition:
+    background-color 220ms ease,
+    color 220ms ease,
+    transform 220ms ease;
 }
 
 .nav-link:hover {
@@ -233,7 +235,10 @@ a {
   background: var(--brand);
   color: #fff;
   font-weight: 600;
-  transition: transform 220ms ease, box-shadow 220ms ease, background-color 220ms ease;
+  transition:
+    transform 220ms ease,
+    box-shadow 220ms ease,
+    background-color 220ms ease;
 }
 
 .nav-logout {
@@ -248,6 +253,76 @@ a {
   color: var(--brand-strong);
   font-size: 0.8rem;
   font-weight: 600;
+}
+
+.community-search-toolbar {
+  margin-bottom: 1.5rem;
+  position: relative;
+  z-index: 2000;
+}
+
+.community-search-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: min(420px, 100%);
+  z-index: 3000;
+  padding: 0.5rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.community-hub-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1rem;
+}
+
+.community-top-sidebar {
+  align-self: start;
+}
+
+.community-feed-list,
+.community-sidebar-list {
+  list-style: none;
+  display: grid;
+  gap: 0.7rem;
+  padding-left: 0;
+}
+
+.community-sidebar-item {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface) 92%, var(--brand) 8%);
+}
+
+.community-sidebar-link {
+  display: grid;
+  gap: 0.28rem;
+  padding: 0.7rem;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.community-sidebar-link:hover {
+  background: color-mix(in srgb, var(--surface) 80%, var(--brand) 20%);
+}
+
+.community-sidebar-meta {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.community-sidebar-description {
+  margin: 0.2rem 0;
+  color: var(--text);
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
+.community-sidebar-members {
+  color: var(--muted);
+  font-size: 0.78rem;
 }
 
 .nav-cta:hover,
@@ -489,7 +564,7 @@ a {
 }
 
 .wiki-fandom-page {
-  --wiki-serif: 'Merriweather', Georgia, 'Times New Roman', serif;
+  --wiki-serif: "Merriweather", Georgia, "Times New Roman", serif;
 }
 
 .wiki-fandom-page h1,
@@ -542,7 +617,11 @@ a {
 }
 
 .wiki-featured {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--surface) 84%, #fff), color-mix(in srgb, var(--surface-soft) 94%, #fff));
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--surface) 84%, #fff),
+    color-mix(in srgb, var(--surface-soft) 94%, #fff)
+  );
 }
 
 .wiki-featured-card {
@@ -674,7 +753,12 @@ a {
 .wiki-skeleton {
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
-  background: linear-gradient(90deg, color-mix(in srgb, var(--surface) 80%, transparent), color-mix(in srgb, var(--surface-soft) 90%, transparent), color-mix(in srgb, var(--surface) 80%, transparent));
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--surface) 80%, transparent),
+    color-mix(in srgb, var(--surface-soft) 90%, transparent),
+    color-mix(in srgb, var(--surface) 80%, transparent)
+  );
   background-size: 200% 100%;
   animation: shimmer 1.4s ease-in-out infinite;
 }
@@ -770,7 +854,10 @@ a {
   filter: blur(16px) saturate(1.08);
   transform: scale(1.035);
   opacity: 0.85;
-  transition: filter 420ms ease, transform 420ms ease, opacity 420ms ease;
+  transition:
+    filter 420ms ease,
+    transform 420ms ease,
+    opacity 420ms ease;
 }
 
 .progressive-image.is-loaded .progressive-image-img {
@@ -843,7 +930,9 @@ a {
 
 .quick-card {
   padding: var(--space-4);
-  transition: transform 220ms ease, box-shadow 220ms ease;
+  transition:
+    transform 220ms ease,
+    box-shadow 220ms ease;
 }
 
 .quick-card:hover {
@@ -963,7 +1052,9 @@ a {
 .media-card {
   list-style: none;
   padding: var(--space-3);
-  transition: transform 220ms ease, box-shadow 220ms ease;
+  transition:
+    transform 220ms ease,
+    box-shadow 220ms ease;
 }
 
 .media-card:hover {
@@ -1153,6 +1244,10 @@ button:hover {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
+  .community-hub-grid {
+    grid-template-columns: 1fr;
+  }
+
   .quick-grid,
   .genre-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1317,7 +1412,7 @@ button:hover {
   }
 }
 
-/* 
+/*
 ========================================
    WIKI REDESIGN OVERRIDES
 ========================================
@@ -1332,7 +1427,9 @@ button:hover {
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
   box-shadow: 0 8px 32px rgb(0 0 0 / 0.04);
-  transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 300ms ease;
+  transition:
+    transform 300ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 300ms ease;
 }
 
 .wiki-fandom-page .section-block:hover {
@@ -1433,13 +1530,17 @@ button:hover {
 }
 
 .wiki-reply-thread::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: -2px;
   width: 2px;
   height: 100%;
-  background: linear-gradient(to bottom, color-mix(in srgb, var(--border) 50%, transparent) 80%, transparent);
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--border) 50%, transparent) 80%,
+    transparent
+  );
 }
 
 .wiki-comment-header {
@@ -1491,7 +1592,6 @@ button:hover {
   border-radius: 12px;
   border: 1px dashed color-mix(in srgb, var(--brand) 40%, transparent);
 }
-
 
 /* Article Meta Premium Panel */
 .wiki-meta-panel {
@@ -1571,9 +1671,15 @@ button:hover {
   text-transform: capitalize;
 }
 
-.wiki-stat-value.status-published { color: #10b981; }
-.wiki-stat-value.status-draft { color: #f59e0b; }
-.wiki-stat-value.status-flagged { color: #ef4444; }
+.wiki-stat-value.status-published {
+  color: #10b981;
+}
+.wiki-stat-value.status-draft {
+  color: #f59e0b;
+}
+.wiki-stat-value.status-flagged {
+  color: #ef4444;
+}
 
 .wiki-meta-tags {
   display: flex;

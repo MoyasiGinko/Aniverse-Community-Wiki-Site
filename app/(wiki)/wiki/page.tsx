@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { apiRequest } from '../../src/lib/apiClient';
+import { apiRequest } from '@/src/lib/apiClient';
 import WikiBrowsingPanel from './_components/WikiBrowsingPanel';
 import WikiCreateForm from './_components/WikiCreateForm';
 

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { issueToken, publicUser, SESSION_COOKIE, verifyPassword } from '../../../../src/lib/auth';
-import { updateDb } from '../../../../src/lib/db';
+import { issueToken, publicUser, SESSION_COOKIE, verifyPassword } from '@/src/lib/auth';
+import { updateDb } from '@/src/lib/db';
 
 export async function POST(req: Request) {
   const payload = (await req.json()) as { email?: string; password?: string };

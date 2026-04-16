@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getSessionUser, hasRole } from '../../../../../src/lib/auth';
-import { updateDb } from '../../../../../src/lib/db';
+import { getSessionUser, hasRole } from '@/src/lib/auth';
+import { updateDb } from '@/src/lib/db';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getSessionUser();

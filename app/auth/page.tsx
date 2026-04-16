@@ -2,8 +2,8 @@
 
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiRequest } from '../../src/lib/apiClient';
-import { useAuth } from '../../src/context/AuthContext';
+import { apiRequest } from '@/src/lib/apiClient';
+import { useAuth } from '@/src/context/AuthContext';
 
 const oauthProviders = [
   { id: 'google', label: 'Continue with Google' },

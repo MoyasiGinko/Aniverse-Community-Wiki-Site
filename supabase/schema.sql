@@ -30,6 +30,26 @@ create table if not exists public.app_watchlist (
   primary key (user_id, anime_id)
 );
 
+create table if not exists public.app_communities (
+  id uuid primary key default gen_random_uuid(),
+  slug text not null unique,
+  name text not null,
+  description text not null default '',
+  category text not null default 'General',
+  banner_url text not null default '',
+  icon_url text not null default '',
+  owner_id uuid not null references public.app_users(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.app_community_members (
+  community_id uuid not null references public.app_communities(id) on delete cascade,
+  user_id uuid not null references public.app_users(id) on delete cascade,
+  role text not null check (role in ('member', 'mod', 'admin')) default 'member',
+  joined_at timestamptz not null default now(),
+  primary key (community_id, user_id)
+);
+
 create table if not exists public.app_wiki_entries (
   id uuid primary key default gen_random_uuid(),
   slug text not null unique,
@@ -42,6 +62,7 @@ create table if not exists public.app_wiki_entries (
   cover_image_url text not null default '',
   extra_image_urls text[] not null default '{}',
   author_id uuid not null references public.app_users(id) on delete cascade,
+  community_id uuid references public.app_communities(id) on delete set null,
   updated_at timestamptz not null default now(),
   created_at timestamptz not null default now(),
   revision integer not null default 1
@@ -51,6 +72,7 @@ alter table public.app_wiki_entries add column if not exists mal_anime_id intege
 alter table public.app_wiki_entries add column if not exists mal_anime_title text not null default '';
 alter table public.app_wiki_entries add column if not exists cover_image_url text not null default '';
 alter table public.app_wiki_entries add column if not exists extra_image_urls text[] not null default '{}';
+alter table public.app_wiki_entries add column if not exists community_id uuid references public.app_communities(id) on delete set null;
 
 create table if not exists public.app_wiki_comments (
   id uuid primary key default gen_random_uuid(),
@@ -65,11 +87,16 @@ alter table public.app_wiki_comments add column if not exists parent_comment_id 
 
 create table if not exists public.app_threads (
   id uuid primary key default gen_random_uuid(),
+  community_id uuid references public.app_communities(id) on delete cascade,
+  wiki_reference_id uuid references public.app_wiki_entries(id) on delete cascade,
   title text not null,
   body text not null,
   author_id uuid not null references public.app_users(id) on delete cascade,
   created_at timestamptz not null default now()
 );
+
+alter table public.app_threads add column if not exists community_id uuid references public.app_communities(id) on delete cascade;
+alter table public.app_threads add column if not exists wiki_reference_id uuid references public.app_wiki_entries(id) on delete cascade;
 
 create table if not exists public.app_comments (
   id uuid primary key default gen_random_uuid(),
@@ -84,7 +111,7 @@ alter table public.app_comments add column if not exists parent_comment_id uuid 
 
 create table if not exists public.app_reports (
   id uuid primary key default gen_random_uuid(),
-  type text not null check (type in ('thread', 'comment', 'wiki')),
+  type text not null check (type in ('thread', 'comment', 'wiki', 'community')),
   target_id text not null,
   reason text not null,
   reporter_id uuid not null references public.app_users(id) on delete cascade,
@@ -93,11 +120,16 @@ create table if not exists public.app_reports (
 
 create index if not exists idx_sessions_user on public.app_sessions(user_id);
 create index if not exists idx_watchlist_user on public.app_watchlist(user_id);
+create index if not exists idx_communities_owner on public.app_communities(owner_id);
+create index if not exists idx_community_members_user on public.app_community_members(user_id);
 create index if not exists idx_wiki_author on public.app_wiki_entries(author_id);
+create index if not exists idx_wiki_community on public.app_wiki_entries(community_id);
 create index if not exists idx_wiki_comments_entry on public.app_wiki_comments(entry_id);
 create index if not exists idx_wiki_comments_author on public.app_wiki_comments(author_id);
 create index if not exists idx_wiki_comments_parent on public.app_wiki_comments(parent_comment_id);
 create index if not exists idx_threads_author on public.app_threads(author_id);
+create index if not exists idx_threads_community on public.app_threads(community_id);
+create index if not exists idx_threads_wiki on public.app_threads(wiki_reference_id);
 create index if not exists idx_comments_thread on public.app_comments(thread_id);
 create index if not exists idx_comments_author on public.app_comments(author_id);
 create index if not exists idx_comments_parent on public.app_comments(parent_comment_id);
@@ -106,6 +138,8 @@ create index if not exists idx_reports_reporter on public.app_reports(reporter_i
 alter table public.app_users enable row level security;
 alter table public.app_sessions enable row level security;
 alter table public.app_watchlist enable row level security;
+alter table public.app_communities enable row level security;
+alter table public.app_community_members enable row level security;
 alter table public.app_wiki_entries enable row level security;
 alter table public.app_wiki_comments enable row level security;
 alter table public.app_threads enable row level security;
@@ -124,6 +158,12 @@ begin
   end if;
   if not exists (select 1 from pg_policies where tablename = 'app_watchlist' and policyname = 'allow_all_watchlist') then
     create policy allow_all_watchlist on public.app_watchlist for all using (true) with check (true);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'app_communities' and policyname = 'allow_all_communities') then
+    create policy allow_all_communities on public.app_communities for all using (true) with check (true);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'app_community_members' and policyname = 'allow_all_community_members') then
+    create policy allow_all_community_members on public.app_community_members for all using (true) with check (true);
   end if;
   if not exists (select 1 from pg_policies where tablename = 'app_wiki_entries' and policyname = 'allow_all_wiki') then
     create policy allow_all_wiki on public.app_wiki_entries for all using (true) with check (true);

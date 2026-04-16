@@ -28,6 +28,7 @@
     "redux-thunk": "^2.4.2"
   },
   "devDependencies": {
+    "@babel/plugin-syntax-jsx": "^7.28.6",
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getSessionUser } from '../../../../src/lib/auth';
-import { readDb, updateDb } from '../../../../src/lib/db';
+import { getSessionUser } from '@/src/lib/auth';
+import { readDb, updateDb } from '@/src/lib/db';
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
