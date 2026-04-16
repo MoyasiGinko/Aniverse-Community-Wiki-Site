@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, FormEvent } from "react";
 import { useParams } from "next/navigation";
 import { apiRequest } from "@/src/lib/apiClient";
@@ -10,6 +11,8 @@ type Community = {
   name: string;
   description: string;
   category: string;
+  iconUrl: string;
+  bannerUrl: string;
 };
 
 type Thread = {
@@ -18,6 +21,7 @@ type Thread = {
   wikiReferenceId: string | null;
   title: string;
   body: string;
+  imageUrls: string[];
   createdAt?: string;
 };
 
@@ -30,6 +34,7 @@ export default function CommunitySlugPage() {
   const [showCreateThread, setShowCreateThread] = useState(false);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [attachmentUrls, setAttachmentUrls] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [info, setInfo] = useState("");
@@ -96,10 +101,19 @@ export default function CommunitySlugPage() {
     try {
       await apiRequest("/api/community/threads", {
         method: "POST",
-        body: JSON.stringify({ title, body, communityId: community.id }),
+        body: JSON.stringify({
+          title,
+          body,
+          communityId: community.id,
+          imageUrls: attachmentUrls
+            .split("\n")
+            .map((value) => value.trim())
+            .filter(Boolean),
+        }),
       });
       setTitle("");
       setBody("");
+      setAttachmentUrls("");
       setShowCreateThread(false);
       setInfo("Thread published.");
       const tData = await apiRequest<{ threads: Thread[] }>(
@@ -140,13 +154,27 @@ export default function CommunitySlugPage() {
         className="wiki-meta-panel fade-in-up"
         style={{ marginBottom: "2rem" }}
       >
-        <div className="wiki-meta-header" style={{ alignItems: "flex-start" }}>
+        {community.bannerUrl ? (
           <div
-            className="wiki-meta-icon"
-            style={{ width: 80, height: 80, fontSize: "2.5rem" }}
-          >
-            {community.name.charAt(0).toUpperCase()}
-          </div>
+            className="community-cover"
+            style={{ backgroundImage: `url(${community.bannerUrl})` }}
+          />
+        ) : null}
+        <div className="wiki-meta-header" style={{ alignItems: "flex-start" }}>
+          {community.iconUrl ? (
+            <img
+              src={community.iconUrl}
+              alt={`${community.name} logo`}
+              className="community-logo"
+            />
+          ) : (
+            <div
+              className="wiki-meta-icon"
+              style={{ width: 80, height: 80, fontSize: "2.5rem" }}
+            >
+              {community.name.charAt(0).toUpperCase()}
+            </div>
+          )}
           <div style={{ flex: 1 }}>
             <h1 style={{ fontSize: "2.5rem", marginBottom: "0.2rem" }}>
               c/{community.slug}
@@ -217,6 +245,16 @@ export default function CommunitySlugPage() {
             rows={4}
             required
           />
+          <label htmlFor="attachments">
+            Image Attachment URLs (one per line)
+          </label>
+          <textarea
+            id="attachments"
+            value={attachmentUrls}
+            onChange={(e) => setAttachmentUrls(e.target.value)}
+            rows={3}
+            placeholder="https://example.com/thread-image-1.jpg"
+          />
           <div className="inline-actions">
             <button type="submit">Post to c/{community.slug}</button>
             <button
@@ -258,6 +296,24 @@ export default function CommunitySlugPage() {
                 {thread.body.slice(0, 300)}
                 {thread.body.length > 300 ? "..." : ""}
               </p>
+              {thread.imageUrls?.length ? (
+                <div className="community-attachment-grid">
+                  {thread.imageUrls.slice(0, 3).map((url) => (
+                    <img
+                      key={`${thread.id}-${url}`}
+                      src={url}
+                      alt="Thread attachment preview"
+                      className="community-attachment-thumb"
+                    />
+                  ))}
+                </div>
+              ) : null}
+              <Link
+                href={`/community/thread/${thread.id}`}
+                className="workspace-link"
+              >
+                Open thread page
+              </Link>
             </li>
           ))
         ) : (

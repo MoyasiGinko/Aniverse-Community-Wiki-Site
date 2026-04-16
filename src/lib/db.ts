@@ -80,6 +80,7 @@ export interface CommunityThreadRecord {
   wikiReferenceId: string | null;
   title: string;
   body: string;
+  imageUrls: string[];
   authorId: string;
   createdAt: string;
 }
@@ -90,6 +91,25 @@ export interface CommunityCommentRecord {
   parentCommentId: string | null;
   body: string;
   authorId: string;
+  createdAt: string;
+}
+
+export interface ThreadVoteRecord {
+  threadId: string;
+  userId: string;
+  value: 1 | -1;
+  createdAt: string;
+}
+
+export interface ThreadSaveRecord {
+  threadId: string;
+  userId: string;
+  createdAt: string;
+}
+
+export interface ThreadViewRecord {
+  threadId: string;
+  userId: string;
   createdAt: string;
 }
 
@@ -112,6 +132,9 @@ export interface AppDb {
   wikiComments: WikiCommentRecord[];
   threads: CommunityThreadRecord[];
   comments: CommunityCommentRecord[];
+  threadVotes: ThreadVoteRecord[];
+  threadSaves: ThreadSaveRecord[];
+  threadViews: ThreadViewRecord[];
   reports: ReportRecord[];
 }
 
@@ -184,6 +207,7 @@ const toThread = (row: any): CommunityThreadRecord => ({
   wikiReferenceId: row.wiki_reference_id || null,
   title: row.title,
   body: row.body,
+  imageUrls: row.image_urls || [],
   authorId: row.author_id,
   createdAt: row.created_at,
 });
@@ -206,6 +230,25 @@ const toComment = (row: any): CommunityCommentRecord => ({
   createdAt: row.created_at,
 });
 
+const toThreadVote = (row: any): ThreadVoteRecord => ({
+  threadId: row.thread_id,
+  userId: row.user_id,
+  value: row.value,
+  createdAt: row.created_at,
+});
+
+const toThreadSave = (row: any): ThreadSaveRecord => ({
+  threadId: row.thread_id,
+  userId: row.user_id,
+  createdAt: row.created_at,
+});
+
+const toThreadView = (row: any): ThreadViewRecord => ({
+  threadId: row.thread_id,
+  userId: row.user_id,
+  createdAt: row.created_at,
+});
+
 const toReport = (row: any): ReportRecord => ({
   id: row.id,
   type: row.type,
@@ -219,6 +262,9 @@ async function mustSelect(table: string) {
   try {
     const { data, error } = await supabase.from(table).select("*");
     if (error) {
+      if ((error as { code?: string }).code === "PGRST205") {
+        return [];
+      }
       console.warn(`[Supabase Select Error on ${table}]`, error);
       return [];
     }
@@ -236,20 +282,30 @@ async function replaceTable(
   try {
     const wipe = await supabase.from(table).delete().not(idColumn, "is", null);
     if (wipe.error) {
+      if ((wipe.error as { code?: string }).code === "PGRST205") {
+        return;
+      }
       console.warn(`[Supabase Wipe Error on ${table}]`, wipe.error);
     }
   } catch (e) {
-    console.warn(`[Supabase Wipe Exception on ${table}]`, e);
+    if ((e as { code?: string }).code !== "PGRST205") {
+      console.warn(`[Supabase Wipe Exception on ${table}]`, e);
+    }
   }
 
   if (rows.length > 0) {
     try {
       const insert = await supabase.from(table).insert(rows);
       if (insert.error) {
+        if ((insert.error as { code?: string }).code === "PGRST205") {
+          return;
+        }
         console.warn(`[Supabase Insert Error on ${table}]`, insert.error);
       }
     } catch (e) {
-      console.warn(`[Supabase Insert Exception on ${table}]`, e);
+      if ((e as { code?: string }).code !== "PGRST205") {
+        console.warn(`[Supabase Insert Exception on ${table}]`, e);
+      }
     }
   }
 }
@@ -265,6 +321,9 @@ export async function readDb(): Promise<AppDb> {
     wikiComments,
     threads,
     comments,
+    threadVotes,
+    threadSaves,
+    threadViews,
     reports,
   ] = await Promise.all([
     mustSelect("app_users"),
@@ -276,6 +335,9 @@ export async function readDb(): Promise<AppDb> {
     mustSelect("app_wiki_comments"),
     mustSelect("app_threads"),
     mustSelect("app_comments"),
+    mustSelect("app_thread_votes"),
+    mustSelect("app_thread_saves"),
+    mustSelect("app_thread_views"),
     mustSelect("app_reports"),
   ]);
 
@@ -289,6 +351,9 @@ export async function readDb(): Promise<AppDb> {
     wikiComments: wikiComments.map(toWikiComment),
     threads: threads.map(toThread),
     comments: comments.map(toComment),
+    threadVotes: threadVotes.map(toThreadVote),
+    threadSaves: threadSaves.map(toThreadSave),
+    threadViews: threadViews.map(toThreadView),
     reports: reports.map(toReport),
   };
 }
@@ -403,6 +468,7 @@ export async function writeDb(data: AppDb): Promise<void> {
       wiki_reference_id: thread.wikiReferenceId,
       title: thread.title,
       body: thread.body,
+      image_urls: thread.imageUrls,
       author_id: thread.authorId,
       created_at: thread.createdAt,
     })),
@@ -418,6 +484,37 @@ export async function writeDb(data: AppDb): Promise<void> {
       body: comment.body,
       author_id: comment.authorId,
       created_at: comment.createdAt,
+    })),
+  );
+
+  await replaceTable(
+    "app_thread_votes",
+    "user_id",
+    data.threadVotes.map((vote) => ({
+      thread_id: vote.threadId,
+      user_id: vote.userId,
+      value: vote.value,
+      created_at: vote.createdAt,
+    })),
+  );
+
+  await replaceTable(
+    "app_thread_saves",
+    "user_id",
+    data.threadSaves.map((save) => ({
+      thread_id: save.threadId,
+      user_id: save.userId,
+      created_at: save.createdAt,
+    })),
+  );
+
+  await replaceTable(
+    "app_thread_views",
+    "user_id",
+    data.threadViews.map((view) => ({
+      thread_id: view.threadId,
+      user_id: view.userId,
+      created_at: view.createdAt,
     })),
   );
 

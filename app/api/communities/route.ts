@@ -60,6 +60,8 @@ export async function POST(req: Request) {
     name?: string;
     description?: string;
     category?: string;
+    iconUrl?: string;
+    bannerUrl?: string;
   };
   if (!payload.slug || !payload.name) {
     return NextResponse.json(
@@ -87,8 +89,8 @@ export async function POST(req: Request) {
     name: payload.name.trim(),
     description: payload.description || "",
     category: payload.category || "General",
-    bannerUrl: "",
-    iconUrl: "",
+    bannerUrl: payload.bannerUrl?.trim() || "",
+    iconUrl: payload.iconUrl?.trim() || "",
     ownerId: user.id,
     createdAt: new Date().toISOString(),
   };

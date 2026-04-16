@@ -91,12 +91,14 @@ create table if not exists public.app_threads (
   wiki_reference_id uuid references public.app_wiki_entries(id) on delete cascade,
   title text not null,
   body text not null,
+  image_urls text[] not null default '{}',
   author_id uuid not null references public.app_users(id) on delete cascade,
   created_at timestamptz not null default now()
 );
 
 alter table public.app_threads add column if not exists community_id uuid references public.app_communities(id) on delete cascade;
 alter table public.app_threads add column if not exists wiki_reference_id uuid references public.app_wiki_entries(id) on delete cascade;
+alter table public.app_threads add column if not exists image_urls text[] not null default '{}';
 
 create table if not exists public.app_comments (
   id uuid primary key default gen_random_uuid(),
@@ -108,6 +110,28 @@ create table if not exists public.app_comments (
 );
 
 alter table public.app_comments add column if not exists parent_comment_id uuid references public.app_comments(id) on delete cascade;
+
+create table if not exists public.app_thread_votes (
+  thread_id uuid not null references public.app_threads(id) on delete cascade,
+  user_id uuid not null references public.app_users(id) on delete cascade,
+  value smallint not null check (value in (-1, 1)),
+  created_at timestamptz not null default now(),
+  primary key (thread_id, user_id)
+);
+
+create table if not exists public.app_thread_saves (
+  thread_id uuid not null references public.app_threads(id) on delete cascade,
+  user_id uuid not null references public.app_users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (thread_id, user_id)
+);
+
+create table if not exists public.app_thread_views (
+  thread_id uuid not null references public.app_threads(id) on delete cascade,
+  user_id uuid not null references public.app_users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (thread_id, user_id)
+);
 
 create table if not exists public.app_reports (
   id uuid primary key default gen_random_uuid(),
@@ -133,6 +157,12 @@ create index if not exists idx_threads_wiki on public.app_threads(wiki_reference
 create index if not exists idx_comments_thread on public.app_comments(thread_id);
 create index if not exists idx_comments_author on public.app_comments(author_id);
 create index if not exists idx_comments_parent on public.app_comments(parent_comment_id);
+create index if not exists idx_thread_votes_thread on public.app_thread_votes(thread_id);
+create index if not exists idx_thread_votes_user on public.app_thread_votes(user_id);
+create index if not exists idx_thread_saves_thread on public.app_thread_saves(thread_id);
+create index if not exists idx_thread_saves_user on public.app_thread_saves(user_id);
+create index if not exists idx_thread_views_thread on public.app_thread_views(thread_id);
+create index if not exists idx_thread_views_user on public.app_thread_views(user_id);
 create index if not exists idx_reports_reporter on public.app_reports(reporter_id);
 
 alter table public.app_users enable row level security;
@@ -144,6 +174,9 @@ alter table public.app_wiki_entries enable row level security;
 alter table public.app_wiki_comments enable row level security;
 alter table public.app_threads enable row level security;
 alter table public.app_comments enable row level security;
+alter table public.app_thread_votes enable row level security;
+alter table public.app_thread_saves enable row level security;
+alter table public.app_thread_views enable row level security;
 alter table public.app_reports enable row level security;
 
 -- Temporary permissive policies for app-owned API routes using publishable key.
@@ -176,6 +209,15 @@ begin
   end if;
   if not exists (select 1 from pg_policies where tablename = 'app_comments' and policyname = 'allow_all_comments') then
     create policy allow_all_comments on public.app_comments for all using (true) with check (true);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'app_thread_votes' and policyname = 'allow_all_thread_votes') then
+    create policy allow_all_thread_votes on public.app_thread_votes for all using (true) with check (true);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'app_thread_saves' and policyname = 'allow_all_thread_saves') then
+    create policy allow_all_thread_saves on public.app_thread_saves for all using (true) with check (true);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'app_thread_views' and policyname = 'allow_all_thread_views') then
+    create policy allow_all_thread_views on public.app_thread_views for all using (true) with check (true);
   end if;
   if not exists (select 1 from pg_policies where tablename = 'app_reports' and policyname = 'allow_all_reports') then
     create policy allow_all_reports on public.app_reports for all using (true) with check (true);
