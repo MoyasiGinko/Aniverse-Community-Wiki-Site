@@ -30,8 +30,8 @@ type Community = {
   name: string;
 };
 
-export default function CommunityThreadPage() {
-  const params = useParams<{ threadId: string }>();
+export default function CommunityThreadSlugPage() {
+  const params = useParams<{ slug: string; threadSlug: string }>();
   const [thread, setThread] = useState<Thread | null>(null);
   const [community, setCommunity] = useState<Community | null>(null);
   const [trendingThreads, setTrendingThreads] = useState<Thread[]>([]);
@@ -43,45 +43,32 @@ export default function CommunityThreadPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [threadData, trendingData, communitiesData] = await Promise.all([
-          apiRequest<{ thread: Thread }>(
-            `/api/community/threads/${params.threadId}`,
+        const [data, trendingData, communitiesData] = await Promise.all([
+          apiRequest<{ thread: Thread; community: Community }>(
+            `/api/community/threads/by-slug?communitySlug=${params.slug}&threadSlug=${params.threadSlug}`,
           ),
           apiRequest<{ threads: Thread[] }>(
             "/api/community/threads?mode=trending&limit=10",
           ),
           apiRequest<{ communities: Community[] }>("/api/communities"),
         ]);
-        setThread(threadData.thread);
+        setThread(data.thread);
+        setCommunity(data.community);
         setTrendingThreads(
-          trendingData.threads.filter(
-            (item) => item.id !== threadData.thread.id,
-          ),
+          trendingData.threads.filter((item) => item.id !== data.thread.id),
         );
         setCommunityById(
           new Map(
             communitiesData.communities.map((entry) => [entry.id, entry]),
           ),
         );
-
-        if (threadData.thread.communityId) {
-          const communitiesData = await apiRequest<{
-            communities: Community[];
-          }>("/api/communities");
-          const targetCommunity = communitiesData.communities.find(
-            (item) => item.id === threadData.thread.communityId,
-          );
-          if (targetCommunity) {
-            setCommunity(targetCommunity);
-          }
-        }
       } catch (err) {
         setError((err as Error).message);
       }
     };
 
     loadData();
-  }, [params.threadId]);
+  }, [params.slug, params.threadSlug]);
 
   if (error) {
     return (
@@ -180,6 +167,11 @@ export default function CommunityThreadPage() {
                           (item.stats?.downvotes || 0)}{" "}
                         score • {item.stats?.comments || 0} comments
                       </small>
+                      <p className="community-sidebar-description">
+                        {item.body.length > 90
+                          ? `${item.body.slice(0, 90)}...`
+                          : item.body}
+                      </p>
                     </Link>
                   </li>
                 );

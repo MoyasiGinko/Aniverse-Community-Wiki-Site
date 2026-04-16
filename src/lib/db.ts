@@ -76,6 +76,8 @@ export interface WikiCommentRecord {
 
 export interface CommunityThreadRecord {
   id: string;
+  slug: string;
+  isHighlighted: boolean;
   communityId: string | null;
   wikiReferenceId: string | null;
   title: string;
@@ -113,6 +115,26 @@ export interface ThreadViewRecord {
   createdAt: string;
 }
 
+export interface ThreadViewEventRecord {
+  id: string;
+  threadId: string;
+  userId: string | null;
+  createdAt: string;
+}
+
+export interface ThreadShareRecord {
+  threadId: string;
+  userId: string;
+  createdAt: string;
+}
+
+export interface ThreadShareEventRecord {
+  id: string;
+  threadId: string;
+  userId: string | null;
+  createdAt: string;
+}
+
 export interface ReportRecord {
   id: string;
   type: "thread" | "comment" | "wiki" | "community";
@@ -135,6 +157,9 @@ export interface AppDb {
   threadVotes: ThreadVoteRecord[];
   threadSaves: ThreadSaveRecord[];
   threadViews: ThreadViewRecord[];
+  threadViewEvents: ThreadViewEventRecord[];
+  threadShares: ThreadShareRecord[];
+  threadShareEvents: ThreadShareEventRecord[];
   reports: ReportRecord[];
 }
 
@@ -203,6 +228,8 @@ const toWiki = (row: any): WikiRecord => ({
 
 const toThread = (row: any): CommunityThreadRecord => ({
   id: row.id,
+  slug: row.slug || "",
+  isHighlighted: Boolean(row.is_highlighted),
   communityId: row.community_id || null,
   wikiReferenceId: row.wiki_reference_id || null,
   title: row.title,
@@ -249,6 +276,26 @@ const toThreadView = (row: any): ThreadViewRecord => ({
   createdAt: row.created_at,
 });
 
+const toThreadViewEvent = (row: any): ThreadViewEventRecord => ({
+  id: row.id,
+  threadId: row.thread_id,
+  userId: row.user_id || null,
+  createdAt: row.created_at,
+});
+
+const toThreadShare = (row: any): ThreadShareRecord => ({
+  threadId: row.thread_id,
+  userId: row.user_id,
+  createdAt: row.created_at,
+});
+
+const toThreadShareEvent = (row: any): ThreadShareEventRecord => ({
+  id: row.id,
+  threadId: row.thread_id,
+  userId: row.user_id || null,
+  createdAt: row.created_at,
+});
+
 const toReport = (row: any): ReportRecord => ({
   id: row.id,
   type: row.type,
@@ -274,6 +321,93 @@ async function mustSelect(table: string) {
   }
 }
 
+function getMissingColumnFromSchemaCacheError(error: unknown): string | null {
+  const message =
+    typeof error === "object" && error && "message" in error
+      ? String((error as { message?: unknown }).message || "")
+      : "";
+  const match = message.match(/Could not find the '([^']+)' column/);
+  return match ? match[1] : null;
+}
+
+async function insertWithSchemaFallback(
+  table: string,
+  idColumn: string,
+  rows: Record<string, unknown>[],
+) {
+  const conflictColumnsByTable: Record<string, string> = {
+    app_watchlist: "user_id,anime_id",
+    app_community_members: "community_id,user_id",
+    app_thread_votes: "thread_id,user_id",
+    app_thread_saves: "thread_id,user_id",
+    app_thread_views: "thread_id,user_id",
+    app_thread_shares: "thread_id,user_id",
+  };
+  const onConflict = conflictColumnsByTable[table] || idColumn;
+
+  let payload = rows;
+  const removedColumns = new Set<string>();
+
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const insert = await supabase.from(table).insert(payload);
+    if (!insert.error) {
+      return;
+    }
+
+    const code = (insert.error as { code?: string }).code;
+    if (code === "PGRST205") {
+      return;
+    }
+
+    if (code === "PGRST204") {
+      const missingColumn = getMissingColumnFromSchemaCacheError(insert.error);
+      if (missingColumn) {
+        removedColumns.add(missingColumn);
+        payload = payload.map((row) => {
+          const next = { ...row };
+          delete next[missingColumn];
+          return next;
+        });
+        continue;
+      }
+    }
+
+    if (code === "23505") {
+      const upsert = await supabase
+        .from(table)
+        .upsert(payload, { onConflict, ignoreDuplicates: false });
+      if (!upsert.error) {
+        return;
+      }
+
+      if ((upsert.error as { code?: string }).code === "PGRST204") {
+        const missingColumn = getMissingColumnFromSchemaCacheError(
+          upsert.error,
+        );
+        if (missingColumn) {
+          removedColumns.add(missingColumn);
+          payload = payload.map((row) => {
+            const next = { ...row };
+            delete next[missingColumn];
+            return next;
+          });
+          continue;
+        }
+      }
+
+      console.warn(`[Supabase Upsert Error on ${table}]`, upsert.error);
+      return;
+    }
+
+    console.warn(`[Supabase Insert Error on ${table}]`, insert.error);
+    return;
+  }
+
+  console.warn(
+    `[Supabase Insert Error on ${table}] retried without columns: ${Array.from(removedColumns).join(", ")}`,
+  );
+}
+
 async function replaceTable(
   table: string,
   idColumn: string,
@@ -295,13 +429,7 @@ async function replaceTable(
 
   if (rows.length > 0) {
     try {
-      const insert = await supabase.from(table).insert(rows);
-      if (insert.error) {
-        if ((insert.error as { code?: string }).code === "PGRST205") {
-          return;
-        }
-        console.warn(`[Supabase Insert Error on ${table}]`, insert.error);
-      }
+      await insertWithSchemaFallback(table, idColumn, rows);
     } catch (e) {
       if ((e as { code?: string }).code !== "PGRST205") {
         console.warn(`[Supabase Insert Exception on ${table}]`, e);
@@ -324,6 +452,9 @@ export async function readDb(): Promise<AppDb> {
     threadVotes,
     threadSaves,
     threadViews,
+    threadViewEvents,
+    threadShares,
+    threadShareEvents,
     reports,
   ] = await Promise.all([
     mustSelect("app_users"),
@@ -338,6 +469,9 @@ export async function readDb(): Promise<AppDb> {
     mustSelect("app_thread_votes"),
     mustSelect("app_thread_saves"),
     mustSelect("app_thread_views"),
+    mustSelect("app_thread_view_events"),
+    mustSelect("app_thread_shares"),
+    mustSelect("app_thread_share_events"),
     mustSelect("app_reports"),
   ]);
 
@@ -354,6 +488,9 @@ export async function readDb(): Promise<AppDb> {
     threadVotes: threadVotes.map(toThreadVote),
     threadSaves: threadSaves.map(toThreadSave),
     threadViews: threadViews.map(toThreadView),
+    threadViewEvents: threadViewEvents.map(toThreadViewEvent),
+    threadShares: threadShares.map(toThreadShare),
+    threadShareEvents: threadShareEvents.map(toThreadShareEvent),
     reports: reports.map(toReport),
   };
 }
@@ -464,6 +601,8 @@ export async function writeDb(data: AppDb): Promise<void> {
     "id",
     data.threads.map((thread) => ({
       id: thread.id,
+      slug: thread.slug,
+      is_highlighted: Boolean(thread.isHighlighted),
       community_id: thread.communityId,
       wiki_reference_id: thread.wikiReferenceId,
       title: thread.title,
@@ -515,6 +654,38 @@ export async function writeDb(data: AppDb): Promise<void> {
       thread_id: view.threadId,
       user_id: view.userId,
       created_at: view.createdAt,
+    })),
+  );
+
+  await replaceTable(
+    "app_thread_view_events",
+    "id",
+    data.threadViewEvents.map((viewEvent) => ({
+      id: viewEvent.id,
+      thread_id: viewEvent.threadId,
+      user_id: viewEvent.userId,
+      created_at: viewEvent.createdAt,
+    })),
+  );
+
+  await replaceTable(
+    "app_thread_shares",
+    "user_id",
+    data.threadShares.map((share) => ({
+      thread_id: share.threadId,
+      user_id: share.userId,
+      created_at: share.createdAt,
+    })),
+  );
+
+  await replaceTable(
+    "app_thread_share_events",
+    "id",
+    data.threadShareEvents.map((shareEvent) => ({
+      id: shareEvent.id,
+      thread_id: shareEvent.threadId,
+      user_id: shareEvent.userId,
+      created_at: shareEvent.createdAt,
     })),
   );
 

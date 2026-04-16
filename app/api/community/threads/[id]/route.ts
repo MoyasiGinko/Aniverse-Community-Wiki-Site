@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/src/lib/auth";
 import { readDb, updateDb } from "@/src/lib/db";
@@ -18,25 +19,18 @@ export async function GET(_: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Thread not found" }, { status: 404 });
   }
 
-  if (user) {
-    const alreadyViewed = db.threadViews.some(
-      (view) => view.threadId === id && view.userId === user.id,
-    );
-
-    if (!alreadyViewed) {
-      await updateDb((current) => ({
-        ...current,
-        threadViews: [
-          {
-            threadId: id,
-            userId: user.id,
-            createdAt: new Date().toISOString(),
-          },
-          ...current.threadViews,
-        ],
-      }));
-    }
-  }
+  await updateDb((current) => ({
+    ...current,
+    threadViewEvents: [
+      {
+        id: crypto.randomUUID(),
+        threadId: id,
+        userId: user?.id || null,
+        createdAt: new Date().toISOString(),
+      },
+      ...current.threadViewEvents,
+    ],
+  }));
 
   return NextResponse.json({ thread });
 }

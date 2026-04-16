@@ -18,6 +18,7 @@ type Community = {
 
 type Thread = {
   id: string;
+  slug: string;
   title: string;
   body: string;
   imageUrls: string[];
@@ -32,11 +33,95 @@ type Thread = {
     upvotes: number;
     downvotes: number;
     saves: number;
+    shares: number;
     views: number;
     comments: number;
   };
   savedByMe: boolean;
+  sharedByMe: boolean;
+  userVote: 1 | -1 | 0;
 };
+
+const SHARE_COUNT_MODE = "event";
+
+function StatIcon({
+  kind,
+}: {
+  kind: "up" | "down" | "comment" | "view" | "save" | "share";
+}) {
+  if (kind === "up") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+        className="community-stat-icon"
+      >
+        <path d="M12 5l6.5 8h-4.2V19H9.7v-6H5.5L12 5z" fill="currentColor" />
+      </svg>
+    );
+  }
+  if (kind === "down") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+        className="community-stat-icon"
+      >
+        <path d="M12 19l-6.5-8h4.2V5h4.6v6h4.2L12 19z" fill="currentColor" />
+      </svg>
+    );
+  }
+  if (kind === "comment") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+        className="community-stat-icon"
+      >
+        <path
+          d="M4 5h16v10H8l-4 4V5zm2 2v7.2L7.2 13H18V7H6z"
+          fill="currentColor"
+        />
+      </svg>
+    );
+  }
+  if (kind === "save") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+        className="community-stat-icon"
+      >
+        <path
+          d="M6 4h10l2 2v14l-6-3-6 3V4zm2 2v10.8l4-2 4 2V6H8z"
+          fill="currentColor"
+        />
+      </svg>
+    );
+  }
+  if (kind === "share") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+        className="community-stat-icon"
+      >
+        <path
+          d="M14 5l5 5-5 5v-3H9a4 4 0 00-4 4H3a6 6 0 016-6h5V5z"
+          fill="currentColor"
+        />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="community-stat-icon">
+      <path
+        d="M12 6c4.6 0 8.4 2.3 10 6-1.6 3.7-5.4 6-10 6S3.6 15.7 2 12c1.6-3.7 5.4-6 10-6zm0 2C8.6 8 5.6 9.6 4.2 12c1.4 2.4 4.4 4 7.8 4s6.4-1.6 7.8-4C18.4 9.6 15.4 8 12 8zm0 1.8a2.2 2.2 0 110 4.4 2.2 2.2 0 010-4.4z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
 
 export default function CommunitiesIndexPage() {
   const [communities, setCommunities] = useState<Community[]>([]);
@@ -61,7 +146,9 @@ export default function CommunitiesIndexPage() {
     try {
       const [communitiesData, threadsData] = await Promise.all([
         apiRequest<{ communities: Community[] }>("/api/communities"),
-        apiRequest<{ threads: Thread[] }>("/api/community/threads"),
+        apiRequest<{ threads: Thread[] }>(
+          `/api/community/threads?shareMode=${SHARE_COUNT_MODE}`,
+        ),
       ]);
       setCommunities(communitiesData.communities);
       setThreads(threadsData.threads);
@@ -113,17 +200,49 @@ export default function CommunitiesIndexPage() {
     return `${years}y ago`;
   };
 
-  const getThreadUrl = (threadId: string) =>
-    `${window.location.origin}/community/thread/${threadId}`;
+  const getThreadUrl = (threadPath: string) =>
+    `${window.location.origin}${threadPath}`;
 
   const shareThread = async (thread: Thread) => {
-    const url = getThreadUrl(thread.id);
+    const threadPath = thread.communityId
+      ? `/community/${communities.find((entry) => entry.id === thread.communityId)?.slug || "community"}/${thread.slug}`
+      : `/community/thread/${thread.id}`;
+    const url = getThreadUrl(threadPath);
     try {
       if (navigator.share) {
         await navigator.share({ title: thread.title, url });
       } else {
         await navigator.clipboard.writeText(url);
       }
+
+      if (!thread.sharedByMe) {
+        setThreads((current) =>
+          current.map((item) =>
+            item.id === thread.id
+              ? {
+                  ...item,
+                  sharedByMe: true,
+                  stats: {
+                    ...item.stats,
+                    shares: item.stats.shares + 1,
+                  },
+                }
+              : item,
+          ),
+        );
+      }
+
+      try {
+        await apiRequest(
+          `/api/community/threads/${thread.id}/share?mode=${SHARE_COUNT_MODE}`,
+          {
+            method: "POST",
+          },
+        );
+      } catch {
+        // Ignore tracking failure: sharing already succeeded.
+      }
+
       setInfo("Thread link copied/shared.");
       setError("");
     } catch {
@@ -163,6 +282,61 @@ export default function CommunitiesIndexPage() {
                 stats: {
                   ...item.stats,
                   saves: thread.stats.saves,
+                },
+              }
+            : item,
+        ),
+      );
+      setError((err as Error).message);
+    }
+  };
+
+  const toggleVote = async (thread: Thread, value: 1 | -1) => {
+    const previousVote = thread.userVote || 0;
+    const nextVote = previousVote === value ? 0 : value;
+
+    setThreads((current) =>
+      current.map((item) => {
+        if (item.id !== thread.id) return item;
+
+        const upDelta = (nextVote === 1 ? 1 : 0) - (previousVote === 1 ? 1 : 0);
+        const downDelta =
+          (nextVote === -1 ? 1 : 0) - (previousVote === -1 ? 1 : 0);
+
+        return {
+          ...item,
+          userVote: nextVote,
+          stats: {
+            ...item.stats,
+            upvotes: Math.max(0, item.stats.upvotes + upDelta),
+            downvotes: Math.max(0, item.stats.downvotes + downDelta),
+          },
+        };
+      }),
+    );
+
+    try {
+      if (nextVote === 0) {
+        await apiRequest(`/api/community/threads/${thread.id}/vote`, {
+          method: "DELETE",
+        });
+      } else {
+        await apiRequest(`/api/community/threads/${thread.id}/vote`, {
+          method: "POST",
+          body: JSON.stringify({ value: nextVote }),
+        });
+      }
+    } catch (err) {
+      setThreads((current) =>
+        current.map((item) =>
+          item.id === thread.id
+            ? {
+                ...item,
+                userVote: previousVote,
+                stats: {
+                  ...item.stats,
+                  upvotes: thread.stats.upvotes,
+                  downvotes: thread.stats.downvotes,
                 },
               }
             : item,
@@ -374,11 +548,14 @@ export default function CommunitiesIndexPage() {
                 const community = thread.communityId
                   ? communityById.get(thread.communityId)
                   : null;
+                const threadHref = community
+                  ? `/community/${community.slug}/${thread.slug}`
+                  : `/community/thread/${thread.id}`;
                 return (
                   <li key={thread.id} className="community-thread-card">
                     <div className="community-thread-topline">
                       <div className="community-thread-meta">
-                        <div className="community-thread-guild">
+                        <div className="community-thread-identity">
                           {community?.iconUrl ? (
                             <img
                               src={community.iconUrl}
@@ -390,22 +567,24 @@ export default function CommunitiesIndexPage() {
                               {(community?.name || "G").charAt(0).toUpperCase()}
                             </div>
                           )}
-                          {community ? (
-                            <Link
-                              className="community-thread-community"
-                              href={`/community/${community.slug}`}
-                            >
-                              {community.name}
-                            </Link>
-                          ) : (
-                            <span className="community-thread-community">
-                              General
+                          <div className="community-thread-identity-text">
+                            {community ? (
+                              <Link
+                                className="community-thread-community"
+                                href={`/community/${community.slug}`}
+                              >
+                                {community.name}
+                              </Link>
+                            ) : (
+                              <span className="community-thread-community">
+                                General
+                              </span>
+                            )}
+                            <span className="community-thread-author-name">
+                              by {thread.author?.username || "Unknown user"}
                             </span>
-                          )}
+                          </div>
                         </div>
-                        <span className="community-thread-author-name">
-                          by {thread.author?.username || "Unknown user"}
-                        </span>
                       </div>
 
                       <div className="community-thread-actions">
@@ -413,47 +592,45 @@ export default function CommunitiesIndexPage() {
                           {formatTimeAgo(thread.createdAt)}
                         </span>
                         <div className="community-thread-menu-wrap">
-                        <button
-                          type="button"
-                          className="community-thread-menu-button"
-                          aria-label="Thread options"
-                          onClick={() =>
-                            setOpenThreadMenuId((current) =>
-                              current === thread.id ? null : thread.id,
-                            )
-                          }
-                        >
-                          <span className="community-thread-menu-dots" aria-hidden="true">
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                          </span>
-                        </button>
-                        {openThreadMenuId === thread.id ? (
-                          <div className="community-thread-menu-dropdown">
-                            <Link href={`/community/thread/${thread.id}`}>
-                              Open
-                            </Link>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                shareThread(thread);
-                                setOpenThreadMenuId(null);
-                              }}
+                          <button
+                            type="button"
+                            className="community-thread-menu-button"
+                            aria-label="Thread options"
+                            onClick={() =>
+                              setOpenThreadMenuId((current) =>
+                                current === thread.id ? null : thread.id,
+                              )
+                            }
+                          >
+                            <span
+                              className="community-thread-menu-dots"
+                              aria-hidden="true"
                             >
-                              Share
-                            </button>
-                            <button type="button">Report</button>
-                          </div>
-                        ) : null}
+                              <span></span>
+                              <span></span>
+                              <span></span>
+                            </span>
+                          </button>
+                          {openThreadMenuId === thread.id ? (
+                            <div className="community-thread-menu-dropdown">
+                              <Link href={threadHref}>Open</Link>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  shareThread(thread);
+                                  setOpenThreadMenuId(null);
+                                }}
+                              >
+                                Share
+                              </button>
+                              <button type="button">Report</button>
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                     </div>
 
-                    <Link
-                      href={`/community/thread/${thread.id}`}
-                      className="community-thread-title"
-                    >
+                    <Link href={threadHref} className="community-thread-title">
                       {thread.title}
                     </Link>
 
@@ -484,31 +661,43 @@ export default function CommunitiesIndexPage() {
                     ) : null}
 
                     <div className="community-thread-stats-row">
-                      <span className="community-thread-stat">
-                        ▲ {thread.stats.upvotes}
-                      </span>
-                      <span className="community-thread-stat">
-                        ▼ {thread.stats.downvotes}
-                      </span>
                       <button
                         type="button"
-                        className="community-thread-share"
-                        onClick={() => shareThread(thread)}
+                        className={`community-thread-stat ${thread.userVote === 1 ? "is-active" : ""}`}
+                        aria-label={`Upvote thread (${thread.stats.upvotes} upvotes)`}
+                        onClick={() => toggleVote(thread, 1)}
                       >
-                        Share
+                        <StatIcon kind="up" /> {thread.stats.upvotes}
                       </button>
+                      <button
+                        type="button"
+                        className={`community-thread-stat ${thread.userVote === -1 ? "is-active" : ""}`}
+                        aria-label={`Downvote thread (${thread.stats.downvotes} downvotes)`}
+                        onClick={() => toggleVote(thread, -1)}
+                      >
+                        <StatIcon kind="down" /> {thread.stats.downvotes}
+                      </button>
+                      <span className="community-thread-stat">
+                        <StatIcon kind="comment" /> {thread.stats.comments}
+                      </span>
                       <button
                         type="button"
                         className={`community-thread-save ${thread.savedByMe ? "is-active" : ""}`}
+                        aria-label={`Save thread (${thread.stats.saves} saves)`}
                         onClick={() => toggleSaveThread(thread)}
                       >
-                        Save {thread.stats.saves}
+                        <StatIcon kind="save" /> {thread.stats.saves}
                       </button>
-                      <span className="community-thread-stat">
-                        👁 {thread.stats.views}
-                      </span>
-                      <span className="community-thread-stat">
-                        💬 {thread.stats.comments}
+                      <button
+                        type="button"
+                        className="community-thread-share"
+                        aria-label={`Share thread (${thread.stats.shares} shares)`}
+                        onClick={() => shareThread(thread)}
+                      >
+                        <StatIcon kind="share" /> {thread.stats.shares}
+                      </button>
+                      <span className="community-thread-stat community-thread-views">
+                        <StatIcon kind="view" /> {thread.stats.views}
                       </span>
                     </div>
                   </li>
