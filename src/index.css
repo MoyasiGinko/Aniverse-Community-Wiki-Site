@@ -404,13 +404,20 @@ a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  /* border: 1px solid var(--border); */
+  border: 1px solid var(--border);
   border-radius: 10px;
   background: color-mix(in srgb, var(--surface) 90%, var(--brand) 10%);
-  color: var(--text);
+  color: var(--brand-strong);
   width: 34px;
   height: 28px;
   cursor: pointer;
+}
+
+.community-thread-menu-button:hover,
+.community-thread-menu-button:focus-visible {
+  color: #fff;
+  background: var(--brand-strong);
+  border-color: var(--brand-strong);
 }
 
 .community-thread-menu-dots {
@@ -458,6 +465,11 @@ a {
 .community-thread-menu-dropdown a:hover,
 .community-thread-menu-dropdown button:hover {
   background: color-mix(in srgb, var(--surface) 82%, var(--brand) 18%);
+}
+
+.community-thread-menu-dropdown button[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .community-thread-title {
@@ -670,12 +682,152 @@ button.community-thread-stat {
   border-bottom: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
 }
 
+.thread-detail-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.thread-detail-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.thread-detail-title-row h1 {
+  margin: 0;
+  font-size: clamp(1.25rem, 2.1vw, 1.8rem);
+  line-height: 1.2;
+}
+
+.thread-detail-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.thread-detail-origin-row {
+  justify-content: flex-start;
+}
+
+.thread-detail-meta-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.thread-detail-guild-identity {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.thread-detail-guild-icon {
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+}
+
+.thread-detail-guild-icon-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: var(--brand-strong);
+  background: color-mix(in srgb, var(--surface) 74%, var(--brand) 26%);
+}
+
+.thread-detail-guild-text {
+  display: grid;
+  gap: 0.08rem;
+}
+
+.thread-detail-guild-name {
+  color: var(--brand-strong);
+  font-weight: 700;
+  text-decoration: none;
+  line-height: 1.15;
+}
+
+.thread-detail-guild-name:hover {
+  text-decoration: underline;
+}
+
+.thread-detail-byline {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.2;
+}
+
+.thread-detail-meta-actions .community-thread-menu-dots {
+  gap: 3px;
+}
+
+.thread-detail-meta-actions .community-thread-menu-dots span {
+  width: 4px;
+  height: 4px;
+}
+
+.thread-detail-guild-chip,
+.thread-detail-time-chip,
+.thread-detail-author-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.22rem 0.58rem;
+  font-size: 0.78rem;
+  text-decoration: none;
+  background: color-mix(in srgb, var(--surface) 90%, var(--brand) 10%);
+  color: var(--muted);
+}
+
+.thread-detail-guild-chip {
+  color: var(--brand-strong);
+  font-weight: 600;
+}
+
+.thread-detail-author-chip {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.thread-detail-author-avatar {
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.thread-detail-main-column {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+}
+
+.thread-post-card {
+  border-radius: 18px;
+}
+
 .thread-detail-meta {
   color: var(--muted);
 }
 
 .thread-detail-metrics {
-  margin-top: 0.95rem;
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
@@ -711,11 +863,25 @@ button.community-thread-stat {
   margin-top: 1.1rem;
   display: grid;
   gap: 0.55rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
 }
 
 .thread-detail-metrics-wrap h3 {
   font-size: 0.96rem;
   color: var(--brand-strong);
+}
+
+#thread-replies {
+  margin-top: 0;
+  border: 1px solid color-mix(in srgb, var(--brand) 14%, var(--border));
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--surface) 94%, var(--brand) 6%);
+}
+
+#thread-replies .portal-toolbar {
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
+  padding-bottom: 0.7rem;
 }
 
 .nav-cta:hover,
@@ -1968,8 +2134,14 @@ button:hover {
   margin-left: calc(32px + 0.6rem);
   margin-top: 0.6rem;
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
+}
+
+.wiki-comment-actions .community-thread-stat,
+.wiki-comment-actions .action-button.small {
+  min-height: 30px;
 }
 
 .action-button.small {

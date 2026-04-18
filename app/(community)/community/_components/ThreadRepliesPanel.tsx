@@ -17,6 +17,52 @@ type ThreadComment = {
   };
 };
 
+function ReplyIcon({ kind }: { kind: "up" | "down" | "reply" | "menu" }) {
+  if (kind === "up") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+        className="community-stat-icon"
+      >
+        <path d="M12 5l6.5 8h-4.2V19H9.7v-6H5.5L12 5z" fill="currentColor" />
+      </svg>
+    );
+  }
+  if (kind === "down") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+        className="community-stat-icon"
+      >
+        <path d="M12 19l-6.5-8h4.2V5h4.6v6h4.2L12 19z" fill="currentColor" />
+      </svg>
+    );
+  }
+  if (kind === "reply") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+        className="community-stat-icon"
+      >
+        <path
+          d="M10 8l-6 4 6 4v-3h3.5A4.5 4.5 0 0118 17.5V19a6 6 0 00-6-6H10V8z"
+          fill="currentColor"
+        />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="community-stat-icon">
+      <circle cx="6" cy="12" r="1.8" fill="currentColor" />
+      <circle cx="12" cy="12" r="1.8" fill="currentColor" />
+      <circle cx="18" cy="12" r="1.8" fill="currentColor" />
+    </svg>
+  );
+}
+
 function toTree<T extends { id: string; parentCommentId?: string | null }>(
   items: T[],
 ) {
@@ -242,11 +288,12 @@ export default function ThreadRepliesPanel({ threadId }: { threadId: string }) {
                   type="button"
                   className="community-thread-menu-button"
                   aria-label="Reply options"
-                  onClick={() =>
+                  onClick={(event) => {
+                    event.stopPropagation();
                     setOpenMenuCommentId((current) =>
                       current === comment.id ? null : comment.id,
-                    )
-                  }
+                    );
+                  }}
                 >
                   <span
                     className="community-thread-menu-dots"
@@ -279,7 +326,7 @@ export default function ThreadRepliesPanel({ threadId }: { threadId: string }) {
                 aria-label={`Upvote reply (${comment.stats?.upvotes || 0} upvotes)`}
                 onClick={() => toggleVote(comment, 1)}
               >
-                <span aria-hidden="true">▲</span>
+                <ReplyIcon kind="up" />
                 <span>{comment.stats?.upvotes || 0}</span>
               </button>
               <button
@@ -288,7 +335,7 @@ export default function ThreadRepliesPanel({ threadId }: { threadId: string }) {
                 aria-label={`Downvote reply (${comment.stats?.downvotes || 0} downvotes)`}
                 onClick={() => toggleVote(comment, -1)}
               >
-                <span aria-hidden="true">▼</span>
+                <ReplyIcon kind="down" />
                 <span>{comment.stats?.downvotes || 0}</span>
               </button>
               <button
@@ -296,6 +343,7 @@ export default function ThreadRepliesPanel({ threadId }: { threadId: string }) {
                 className="action-button ghost small"
                 onClick={() => setReplyToCommentId(comment.id)}
               >
+                <ReplyIcon kind="reply" />
                 Reply
               </button>
               <span className="meta-line">
@@ -346,6 +394,7 @@ export default function ThreadRepliesPanel({ threadId }: { threadId: string }) {
 
   return (
     <section
+      id="thread-replies"
       className="section-block fade-in-up"
       style={{ marginTop: "1.2rem" }}
     >

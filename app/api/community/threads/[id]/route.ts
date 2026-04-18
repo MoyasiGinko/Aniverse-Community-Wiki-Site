@@ -9,6 +9,15 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
+function toSlug(value: string): string {
+  return (
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "") || "thread"
+  );
+}
+
 export async function GET(_: Request, { params }: RouteContext) {
   const { id } = await params;
   const user = await getSessionUser();
@@ -79,4 +88,96 @@ export async function GET(_: Request, { params }: RouteContext) {
   };
 
   return NextResponse.json({ thread: enrichedThread });
+}
+
+export async function PATCH(req: Request, { params }: RouteContext) {
+  const { id } = await params;
+  const user = await getSessionUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const payload = (await req.json()) as { title?: string; body?: string };
+  const nextTitle = (payload.title || "").trim();
+  const nextBody = (payload.body || "").trim();
+
+  if (!nextTitle && !nextBody) {
+    return NextResponse.json(
+      { error: "title or body is required" },
+      { status: 400 },
+    );
+  }
+
+  let editedThread: {
+    id: string;
+    slug: string;
+    communityId: string | null;
+    authorId: string;
+    title: string;
+    body: string;
+  } | null = null;
+  let forbidden = false;
+
+  await updateDb((db) => {
+    const target = db.threads.find((entry) => entry.id === id);
+    if (!target) {
+      return db;
+    }
+
+    const canEdit =
+      target.authorId === user.id ||
+      user.role === "admin" ||
+      user.role === "mod";
+    if (!canEdit) {
+      forbidden = true;
+      return db;
+    }
+
+    const updatedTitle = nextTitle || target.title;
+    const baseSlug = toSlug(updatedTitle);
+    const needsNewSlug = updatedTitle !== target.title || !target.slug;
+
+    let resolvedSlug = target.slug;
+    if (needsNewSlug) {
+      const hasConflict = db.threads.some(
+        (entry) =>
+          entry.id !== target.id &&
+          entry.communityId === target.communityId &&
+          entry.slug === baseSlug,
+      );
+      resolvedSlug = hasConflict
+        ? `${baseSlug}-${target.id.slice(0, 6)}`
+        : baseSlug;
+    }
+
+    const updated = {
+      ...target,
+      title: updatedTitle,
+      body: nextBody || target.body,
+      slug: resolvedSlug,
+    };
+
+    editedThread = {
+      id: updated.id,
+      slug: updated.slug,
+      communityId: updated.communityId,
+      authorId: updated.authorId,
+      title: updated.title,
+      body: updated.body,
+    };
+
+    return {
+      ...db,
+      threads: db.threads.map((entry) => (entry.id === id ? updated : entry)),
+    };
+  });
+
+  if (!editedThread) {
+    if (forbidden) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    return NextResponse.json({ error: "Thread not found" }, { status: 404 });
+  }
+
+  return NextResponse.json({ thread: editedThread });
 }

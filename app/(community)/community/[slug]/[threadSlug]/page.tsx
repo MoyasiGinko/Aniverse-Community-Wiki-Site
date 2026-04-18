@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { apiRequest } from "@/src/lib/apiClient";
 import ThreadRepliesPanel from "@/app/(community)/community/_components/ThreadRepliesPanel";
 
 type Thread = {
   id: string;
   slug: string;
+  authorId: string;
   title: string;
   body: string;
   imageUrls: string[];
@@ -33,10 +34,17 @@ type Thread = {
   sharedByMe?: boolean;
 };
 
+type Viewer = {
+  id: string;
+  username: string;
+  role: "user" | "mod" | "admin";
+};
+
 type Community = {
   id: string;
   slug: string;
   name: string;
+  iconUrl?: string;
 };
 
 const SHARE_COUNT_MODE = "event";
@@ -120,7 +128,27 @@ function StatIcon({
   );
 }
 
+function formatTimeAgo(value: string) {
+  const date = new Date(value);
+  const elapsed = Math.max(0, Date.now() - date.getTime());
+  const seconds = Math.floor(elapsed / 1000);
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}hr ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 5) return `${weeks}w ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  const years = Math.floor(days / 365);
+  return `${years}y ago`;
+}
+
 export default function CommunityThreadSlugPage() {
+  const router = useRouter();
   const params = useParams<{ slug: string; threadSlug: string }>();
   const [thread, setThread] = useState<Thread | null>(null);
   const [community, setCommunity] = useState<Community | null>(null);
@@ -128,21 +156,28 @@ export default function CommunityThreadSlugPage() {
   const [communityById, setCommunityById] = useState<Map<string, Community>>(
     new Map(),
   );
+  const [viewer, setViewer] = useState<Viewer | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [data, trendingData, communitiesData] = await Promise.all([
-          apiRequest<{ thread: Thread; community: Community }>(
-            `/api/community/threads/by-slug?communitySlug=${params.slug}&threadSlug=${params.threadSlug}`,
-          ),
-          apiRequest<{ threads: Thread[] }>(
-            "/api/community/threads?mode=trending&limit=10",
-          ),
-          apiRequest<{ communities: Community[] }>("/api/communities"),
-        ]);
+        const [data, trendingData, communitiesData, meData] = await Promise.all(
+          [
+            apiRequest<{ thread: Thread; community: Community }>(
+              `/api/community/threads/by-slug?communitySlug=${params.slug}&threadSlug=${params.threadSlug}`,
+            ),
+            apiRequest<{ threads: Thread[] }>(
+              "/api/community/threads?mode=trending&limit=10",
+            ),
+            apiRequest<{ communities: Community[] }>("/api/communities"),
+            apiRequest<{ user: Viewer }>("/api/auth/me").catch(() => ({
+              user: null as unknown as Viewer,
+            })),
+          ],
+        );
         setThread(data.thread);
         setCommunity(data.community);
         setTrendingThreads(
@@ -153,6 +188,7 @@ export default function CommunityThreadSlugPage() {
             communitiesData.communities.map((entry) => [entry.id, entry]),
           ),
         );
+        setViewer(meData.user || null);
       } catch (err) {
         setError((err as Error).message);
       }
@@ -160,6 +196,12 @@ export default function CommunityThreadSlugPage() {
 
     loadData();
   }, [params.slug, params.threadSlug]);
+
+  useEffect(() => {
+    const closeMenu = () => setMenuOpen(false);
+    window.addEventListener("click", closeMenu);
+    return () => window.removeEventListener("click", closeMenu);
+  }, []);
 
   const shareThread = async () => {
     if (!thread) return;
@@ -271,6 +313,84 @@ export default function CommunityThreadSlugPage() {
     }
   };
 
+  const jumpToReplies = () => {
+    document.getElementById("thread-replies")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
+
+  const canEditThread =
+    !!viewer &&
+    !!thread &&
+    (viewer.id === thread.authorId ||
+      viewer.role === "admin" ||
+      viewer.role === "mod");
+
+  const reportThread = async () => {
+    if (!thread) return;
+    const reason =
+      window.prompt("Report reason", "Inappropriate content") || "";
+    if (!reason.trim()) return;
+
+    try {
+      await apiRequest("/api/community/reports", {
+        method: "POST",
+        body: JSON.stringify({
+          type: "thread",
+          targetId: thread.id,
+          reason: reason.trim(),
+        }),
+      });
+      setInfo("Thread reported.");
+      setError("");
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setMenuOpen(false);
+    }
+  };
+
+  const editThread = async () => {
+    if (!thread || !canEditThread) return;
+
+    const nextTitle = window.prompt("Edit thread title", thread.title);
+    if (nextTitle === null) return;
+    const nextBody = window.prompt("Edit thread body", thread.body);
+    if (nextBody === null) return;
+
+    try {
+      const updated = await apiRequest<{
+        thread: { id: string; slug: string; title: string; body: string };
+      }>(`/api/community/threads/${thread.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ title: nextTitle, body: nextBody }),
+      });
+
+      setThread((current) =>
+        current
+          ? {
+              ...current,
+              title: updated.thread.title,
+              body: updated.thread.body,
+              slug: updated.thread.slug,
+            }
+          : current,
+      );
+
+      if (community && updated.thread.slug !== params.threadSlug) {
+        router.replace(`/community/${community.slug}/${updated.thread.slug}`);
+      }
+
+      setInfo("Thread updated.");
+      setError("");
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setMenuOpen(false);
+    }
+  };
+
   if (error && !thread) {
     return (
       <main className="feature-page wiki-fandom-page">
@@ -287,109 +407,181 @@ export default function CommunityThreadSlugPage() {
     );
   }
 
-  const threadDate = (thread.createdAt || "").slice(0, 16).replace("T", " ");
+  const threadAge = formatTimeAgo(thread.createdAt || new Date().toISOString());
+  const guildName = community?.name || "Community thread";
+  const guildIconUrl = community?.iconUrl || "";
+  const authorName = thread.author?.username || "Member";
 
   return (
     <main className="feature-page wiki-fandom-page">
       {error ? <p className="error-text">{error}</p> : null}
       <section className="community-hub-grid fade-in-up">
-        <section
-          className="wiki-meta-panel fade-in-up"
-          style={{ padding: "1.25rem" }}
-        >
-          <header className="thread-detail-header">
-            <h1>{thread.title}</h1>
-            <p className="wiki-meta-subtitle thread-detail-meta">
-              {community ? (
-                <>
-                  In{" "}
-                  <Link
-                    href={`/community/${community.slug}`}
-                    className="workspace-link"
-                  >
-                    {community.name}
-                  </Link>
-                </>
-              ) : (
-                "Community thread"
-              )}
-              {" • "}
-              {threadDate}
-              {thread.author ? ` • by ${thread.author.username}` : ""}
-            </p>
-          </header>
+        <section className="thread-detail-main-column">
+          <section
+            className="wiki-meta-panel fade-in-up thread-post-card"
+            style={{ padding: "1.25rem" }}
+          >
+            <header className="thread-detail-header">
+              <div className="thread-detail-top-row">
+                <div className="thread-detail-meta-row thread-detail-origin-row">
+                  <div className="thread-detail-guild-identity">
+                    {guildIconUrl ? (
+                      <img
+                        src={guildIconUrl}
+                        alt={guildName}
+                        className="thread-detail-guild-icon"
+                      />
+                    ) : (
+                      <span className="thread-detail-guild-icon thread-detail-guild-icon-fallback">
+                        {guildName[0]?.toUpperCase() || "C"}
+                      </span>
+                    )}
 
-          <article className="thread-detail-body">{thread.body}</article>
+                    <div className="thread-detail-guild-text">
+                      {community ? (
+                        <Link
+                          href={`/community/${community.slug}`}
+                          className="thread-detail-guild-name"
+                        >
+                          {guildName}
+                        </Link>
+                      ) : (
+                        <span className="thread-detail-guild-name">
+                          {guildName}
+                        </span>
+                      )}
+                      <p className="thread-detail-byline">by {authorName}</p>
+                    </div>
+                  </div>
+                </div>
 
-          {thread.imageUrls?.length ? (
-            <section className="thread-detail-attachments">
-              <h3>Attachments</h3>
-              <div className="community-attachment-grid thread-detail-attachment-grid">
-                {thread.imageUrls.map((url) => (
-                  <a
-                    key={`${thread.id}-${url}`}
-                    href={url}
-                    target="_blank"
-                    rel="noreferrer"
+                <div className="thread-detail-meta-actions">
+                  <span className="thread-detail-time-chip">{threadAge}</span>
+                  <div
+                    className="community-thread-menu-wrap"
+                    onClick={(event) => event.stopPropagation()}
                   >
-                    <img
-                      src={url}
-                      alt="Thread attachment"
-                      className="community-attachment-thumb"
-                    />
-                  </a>
-                ))}
+                    <button
+                      type="button"
+                      className="community-thread-menu-button"
+                      aria-label="Thread options"
+                      onClick={() => setMenuOpen((open) => !open)}
+                    >
+                      <span
+                        className="community-thread-menu-dots"
+                        aria-hidden="true"
+                      >
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                      </span>
+                    </button>
+                    {menuOpen ? (
+                      <div
+                        className="community-thread-menu-dropdown"
+                        role="menu"
+                      >
+                        <button
+                          type="button"
+                          onClick={editThread}
+                          disabled={!canEditThread}
+                          aria-disabled={!canEditThread}
+                          title={
+                            canEditThread
+                              ? "Edit thread"
+                              : "Only author/mod/admin can edit"
+                          }
+                        >
+                          Edit
+                        </button>
+                        <button type="button" onClick={reportThread}>
+                          Report
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
               </div>
-            </section>
-          ) : (
-            <p className="meta-line thread-detail-no-attachments">
-              No image attachments.
-            </p>
-          )}
 
-          <section className="thread-detail-metrics-wrap">
-            <h3>Thread Metrics</h3>
-            <div className="thread-detail-metrics">
-              <button
-                type="button"
-                className={`community-thread-stat ${thread.userVote === 1 ? "is-active" : ""}`}
-                aria-label={`Upvote thread (${thread.stats?.upvotes || 0} upvotes)`}
-                onClick={() => toggleVote(1)}
-              >
-                <StatIcon kind="up" /> {thread.stats?.upvotes || 0}
-              </button>
-              <button
-                type="button"
-                className={`community-thread-stat ${thread.userVote === -1 ? "is-active" : ""}`}
-                aria-label={`Downvote thread (${thread.stats?.downvotes || 0} downvotes)`}
-                onClick={() => toggleVote(-1)}
-              >
-                <StatIcon kind="down" /> {thread.stats?.downvotes || 0}
-              </button>
-              <span className="community-thread-stat">
-                <StatIcon kind="comment" /> {thread.stats?.comments || 0}
-              </span>
-              <button
-                type="button"
-                className={`community-thread-save ${thread.savedByMe ? "is-active" : ""}`}
-                aria-label={`Save thread (${thread.stats?.saves || 0} saves)`}
-                onClick={toggleSaveThread}
-              >
-                <StatIcon kind="save" /> {thread.stats?.saves || 0}
-              </button>
-              <button
-                type="button"
-                className="community-thread-share"
-                aria-label={`Share thread (${thread.stats?.shares || 0} shares)`}
-                onClick={shareThread}
-              >
-                <StatIcon kind="share" /> {thread.stats?.shares || 0}
-              </button>
-              <span className="community-thread-stat">
-                <StatIcon kind="view" /> {thread.stats?.views || 0}
-              </span>
-            </div>
-            {info ? <p className="meta-line">{info}</p> : null}
+              <h1>{thread.title}</h1>
+            </header>
+
+            <article className="thread-detail-body">{thread.body}</article>
+
+            {thread.imageUrls?.length ? (
+              <section className="thread-detail-attachments">
+                <h3>Attachments</h3>
+                <div className="community-attachment-grid thread-detail-attachment-grid">
+                  {thread.imageUrls.map((url) => (
+                    <a
+                      key={`${thread.id}-${url}`}
+                      href={url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <img
+                        src={url}
+                        alt="Thread attachment"
+                        className="community-attachment-thumb"
+                      />
+                    </a>
+                  ))}
+                </div>
+              </section>
+            ) : (
+              <p className="meta-line thread-detail-no-attachments">
+                No image attachments.
+              </p>
+            )}
+
+            <section className="thread-detail-metrics-wrap">
+              <div className="thread-detail-metrics">
+                <button
+                  type="button"
+                  className={`community-thread-stat ${thread.userVote === 1 ? "is-active" : ""}`}
+                  aria-label={`Upvote thread (${thread.stats?.upvotes || 0} upvotes)`}
+                  onClick={() => toggleVote(1)}
+                >
+                  <StatIcon kind="up" /> {thread.stats?.upvotes || 0}
+                </button>
+                <button
+                  type="button"
+                  className={`community-thread-stat ${thread.userVote === -1 ? "is-active" : ""}`}
+                  aria-label={`Downvote thread (${thread.stats?.downvotes || 0} downvotes)`}
+                  onClick={() => toggleVote(-1)}
+                >
+                  <StatIcon kind="down" /> {thread.stats?.downvotes || 0}
+                </button>
+                <button
+                  type="button"
+                  className="community-thread-stat"
+                  aria-label={`Jump to replies (${thread.stats?.comments || 0} replies)`}
+                  onClick={jumpToReplies}
+                >
+                  <StatIcon kind="comment" /> {thread.stats?.comments || 0}
+                </button>
+                <button
+                  type="button"
+                  className={`community-thread-save ${thread.savedByMe ? "is-active" : ""}`}
+                  aria-label={`Save thread (${thread.stats?.saves || 0} saves)`}
+                  onClick={toggleSaveThread}
+                >
+                  <StatIcon kind="save" /> {thread.stats?.saves || 0}
+                </button>
+                <button
+                  type="button"
+                  className="community-thread-share"
+                  aria-label={`Share thread (${thread.stats?.shares || 0} shares)`}
+                  onClick={shareThread}
+                >
+                  <StatIcon kind="share" /> {thread.stats?.shares || 0}
+                </button>
+                <span className="community-thread-stat community-thread-views">
+                  <StatIcon kind="view" /> {thread.stats?.views || 0}
+                </span>
+              </div>
+              {info ? <p className="meta-line">{info}</p> : null}
+            </section>
           </section>
 
           <ThreadRepliesPanel threadId={thread.id} />
