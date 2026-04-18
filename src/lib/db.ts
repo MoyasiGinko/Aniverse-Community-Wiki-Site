@@ -96,6 +96,13 @@ export interface CommunityCommentRecord {
   createdAt: string;
 }
 
+export interface CommentVoteRecord {
+  commentId: string;
+  userId: string;
+  value: 1 | -1;
+  createdAt: string;
+}
+
 export interface ThreadVoteRecord {
   threadId: string;
   userId: string;
@@ -154,6 +161,7 @@ export interface AppDb {
   wikiComments: WikiCommentRecord[];
   threads: CommunityThreadRecord[];
   comments: CommunityCommentRecord[];
+  commentVotes: CommentVoteRecord[];
   threadVotes: ThreadVoteRecord[];
   threadSaves: ThreadSaveRecord[];
   threadViews: ThreadViewRecord[];
@@ -257,6 +265,13 @@ const toComment = (row: any): CommunityCommentRecord => ({
   createdAt: row.created_at,
 });
 
+const toCommentVote = (row: any): CommentVoteRecord => ({
+  commentId: row.comment_id,
+  userId: row.user_id,
+  value: row.value,
+  createdAt: row.created_at,
+});
+
 const toThreadVote = (row: any): ThreadVoteRecord => ({
   threadId: row.thread_id,
   userId: row.user_id,
@@ -342,6 +357,7 @@ async function insertWithSchemaFallback(
     app_thread_saves: "thread_id,user_id",
     app_thread_views: "thread_id,user_id",
     app_thread_shares: "thread_id,user_id",
+    app_comment_votes: "comment_id,user_id",
   };
   const onConflict = conflictColumnsByTable[table] || idColumn;
 
@@ -449,6 +465,7 @@ export async function readDb(): Promise<AppDb> {
     wikiComments,
     threads,
     comments,
+    commentVotes,
     threadVotes,
     threadSaves,
     threadViews,
@@ -466,6 +483,7 @@ export async function readDb(): Promise<AppDb> {
     mustSelect("app_wiki_comments"),
     mustSelect("app_threads"),
     mustSelect("app_comments"),
+    mustSelect("app_comment_votes"),
     mustSelect("app_thread_votes"),
     mustSelect("app_thread_saves"),
     mustSelect("app_thread_views"),
@@ -485,6 +503,7 @@ export async function readDb(): Promise<AppDb> {
     wikiComments: wikiComments.map(toWikiComment),
     threads: threads.map(toThread),
     comments: comments.map(toComment),
+    commentVotes: commentVotes.map(toCommentVote),
     threadVotes: threadVotes.map(toThreadVote),
     threadSaves: threadSaves.map(toThreadSave),
     threadViews: threadViews.map(toThreadView),
@@ -623,6 +642,17 @@ export async function writeDb(data: AppDb): Promise<void> {
       body: comment.body,
       author_id: comment.authorId,
       created_at: comment.createdAt,
+    })),
+  );
+
+  await replaceTable(
+    "app_comment_votes",
+    "user_id",
+    data.commentVotes.map((vote) => ({
+      comment_id: vote.commentId,
+      user_id: vote.userId,
+      value: vote.value,
+      created_at: vote.createdAt,
     })),
   );
 

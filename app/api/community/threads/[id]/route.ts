@@ -19,7 +19,7 @@ export async function GET(_: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Thread not found" }, { status: 404 });
   }
 
-  await updateDb((current) => ({
+  const updated = await updateDb((current) => ({
     ...current,
     threadViewEvents: [
       {
@@ -32,5 +32,51 @@ export async function GET(_: Request, { params }: RouteContext) {
     ],
   }));
 
-  return NextResponse.json({ thread });
+  const comments = updated.comments.filter((item) => item.threadId === id);
+  const votes = updated.threadVotes.filter((item) => item.threadId === id);
+  const saves = updated.threadSaves.filter((item) => item.threadId === id);
+  const shares = updated.threadShareEvents.filter(
+    (item) => item.threadId === id,
+  );
+  const views = updated.threadViewEvents.filter((item) => item.threadId === id);
+  const author = updated.users.find((entry) => entry.id === thread.authorId);
+  const userVote = user
+    ? updated.threadVotes.find(
+        (item) => item.threadId === id && item.userId === user.id,
+      )?.value || 0
+    : 0;
+  const savedByMe = user
+    ? updated.threadSaves.some(
+        (item) => item.threadId === id && item.userId === user.id,
+      )
+    : false;
+  const sharedByMe = user
+    ? updated.threadShareEvents.some(
+        (item) => item.threadId === id && item.userId === user.id,
+      )
+    : false;
+
+  const enrichedThread = {
+    ...thread,
+    author: author
+      ? {
+          id: author.id,
+          username: author.username,
+          avatarUrl: author.avatarUrl,
+        }
+      : null,
+    stats: {
+      upvotes: votes.filter((item) => item.value === 1).length,
+      downvotes: votes.filter((item) => item.value === -1).length,
+      saves: saves.length,
+      shares: shares.length,
+      views: views.length,
+      comments: comments.length,
+    },
+    userVote,
+    savedByMe,
+    sharedByMe,
+  };
+
+  return NextResponse.json({ thread: enrichedThread });
 }

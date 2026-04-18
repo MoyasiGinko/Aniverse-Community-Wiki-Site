@@ -115,6 +115,14 @@ create table if not exists public.app_comments (
 
 alter table public.app_comments add column if not exists parent_comment_id uuid references public.app_comments(id) on delete cascade;
 
+create table if not exists public.app_comment_votes (
+  comment_id uuid not null references public.app_comments(id) on delete cascade,
+  user_id uuid not null references public.app_users(id) on delete cascade,
+  value smallint not null check (value in (-1, 1)),
+  created_at timestamptz not null default now(),
+  primary key (comment_id, user_id)
+);
+
 create table if not exists public.app_thread_votes (
   thread_id uuid not null references public.app_threads(id) on delete cascade,
   user_id uuid not null references public.app_users(id) on delete cascade,
@@ -184,6 +192,8 @@ create index if not exists idx_threads_highlighted on public.app_threads(communi
 create index if not exists idx_comments_thread on public.app_comments(thread_id);
 create index if not exists idx_comments_author on public.app_comments(author_id);
 create index if not exists idx_comments_parent on public.app_comments(parent_comment_id);
+create index if not exists idx_comment_votes_comment on public.app_comment_votes(comment_id);
+create index if not exists idx_comment_votes_user on public.app_comment_votes(user_id);
 create index if not exists idx_thread_votes_thread on public.app_thread_votes(thread_id);
 create index if not exists idx_thread_votes_user on public.app_thread_votes(user_id);
 create index if not exists idx_thread_saves_thread on public.app_thread_saves(thread_id);
@@ -207,6 +217,7 @@ alter table public.app_wiki_entries enable row level security;
 alter table public.app_wiki_comments enable row level security;
 alter table public.app_threads enable row level security;
 alter table public.app_comments enable row level security;
+alter table public.app_comment_votes enable row level security;
 alter table public.app_thread_votes enable row level security;
 alter table public.app_thread_saves enable row level security;
 alter table public.app_thread_views enable row level security;
@@ -245,6 +256,9 @@ begin
   end if;
   if not exists (select 1 from pg_policies where tablename = 'app_comments' and policyname = 'allow_all_comments') then
     create policy allow_all_comments on public.app_comments for all using (true) with check (true);
+  end if;
+  if not exists (select 1 from pg_policies where tablename = 'app_comment_votes' and policyname = 'allow_all_comment_votes') then
+    create policy allow_all_comment_votes on public.app_comment_votes for all using (true) with check (true);
   end if;
   if not exists (select 1 from pg_policies where tablename = 'app_thread_votes' and policyname = 'allow_all_thread_votes') then
     create policy allow_all_thread_votes on public.app_thread_votes for all using (true) with check (true);
