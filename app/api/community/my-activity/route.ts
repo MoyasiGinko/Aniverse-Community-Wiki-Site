@@ -9,22 +9,61 @@ export async function GET() {
   }
 
   const db = await readDb();
+  const threadById = new Map(db.threads.map((entry) => [entry.id, entry]));
+  const communityById = new Map(
+    db.communities.map((entry) => [entry.id, entry]),
+  );
+  const userById = new Map(db.users.map((entry) => [entry.id, entry]));
+
   const threads = db.threads
     .filter((entry) => entry.authorId === user.id)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .map((entry) => ({
+      ...entry,
+      communitySlug: entry.communityId
+        ? (communityById.get(entry.communityId)?.slug ?? null)
+        : null,
+    }));
 
   const comments = db.comments
     .filter((entry) => entry.authorId === user.id)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .map((entry) => {
+      const thread = threadById.get(entry.threadId);
+      const community = thread?.communityId
+        ? communityById.get(thread.communityId)
+        : null;
+      return {
+        ...entry,
+        threadTitle: thread?.title || "Unknown thread",
+        threadSlug: thread?.slug || "",
+        communitySlug: community?.slug || null,
+      };
+    });
 
   const wiki = db.wiki
     .filter((entry) => entry.authorId === user.id)
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 
-  const communityById = new Map(
-    db.communities.map((entry) => [entry.id, entry]),
-  );
-  const threadById = new Map(db.threads.map((entry) => [entry.id, entry]));
+  const userThreadIds = new Set(threads.map((entry) => entry.id));
+  const managedReplies = db.comments
+    .filter((entry) => userThreadIds.has(entry.threadId))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .map((entry) => {
+      const thread = threadById.get(entry.threadId);
+      const community = thread?.communityId
+        ? communityById.get(thread.communityId)
+        : null;
+      const author = userById.get(entry.authorId);
+      return {
+        ...entry,
+        threadTitle: thread?.title || "Unknown thread",
+        threadSlug: thread?.slug || "",
+        communitySlug: community?.slug || null,
+        authorName: author?.username || "Unknown",
+        isMine: entry.authorId === user.id,
+      };
+    });
 
   const savedThreads = db.threadSaves
     .filter((entry) => entry.userId === user.id)
@@ -56,6 +95,7 @@ export async function GET() {
       comments,
       wiki,
       savedThreads,
+      managedReplies,
     },
   });
 }

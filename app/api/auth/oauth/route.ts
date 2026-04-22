@@ -33,11 +33,18 @@ export async function POST(req: Request) {
     const existing = db.users.find((entry) => entry.email === email);
     if (existing) {
       activeUser = existing;
+      const userSessions = [
+        ...db.sessions.filter((entry) => entry.userId === existing.id),
+        { token, userId: existing.id, createdAt: new Date().toISOString() },
+      ].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+      const cappedUserSessions = userSessions.slice(0, 8);
+
       return {
         ...db,
         sessions: [
           ...db.sessions.filter((entry) => entry.userId !== existing.id),
-          { token, userId: existing.id, createdAt: new Date().toISOString() },
+          ...cappedUserSessions,
         ],
       };
     }

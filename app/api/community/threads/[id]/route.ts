@@ -97,13 +97,20 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const payload = (await req.json()) as { title?: string; body?: string };
+  const payload = (await req.json()) as {
+    title?: string;
+    body?: string;
+    imageUrls?: string[];
+  };
   const nextTitle = (payload.title || "").trim();
   const nextBody = (payload.body || "").trim();
+  const nextImageUrls = Array.isArray(payload.imageUrls)
+    ? payload.imageUrls.map((item) => item.trim()).filter(Boolean)
+    : null;
 
-  if (!nextTitle && !nextBody) {
+  if (!nextTitle && !nextBody && nextImageUrls === null) {
     return NextResponse.json(
-      { error: "title or body is required" },
+      { error: "title, body, or imageUrls is required" },
       { status: 400 },
     );
   }
@@ -115,6 +122,7 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     authorId: string;
     title: string;
     body: string;
+    imageUrls: string[];
   } | null = null;
   let forbidden = false;
 
@@ -154,6 +162,7 @@ export async function PATCH(req: Request, { params }: RouteContext) {
       ...target,
       title: updatedTitle,
       body: nextBody || target.body,
+      imageUrls: nextImageUrls ?? target.imageUrls,
       slug: resolvedSlug,
     };
 
@@ -164,6 +173,7 @@ export async function PATCH(req: Request, { params }: RouteContext) {
       authorId: updated.authorId,
       title: updated.title,
       body: updated.body,
+      imageUrls: updated.imageUrls,
     };
 
     return {
@@ -180,4 +190,74 @@ export async function PATCH(req: Request, { params }: RouteContext) {
   }
 
   return NextResponse.json({ thread: editedThread });
+}
+
+export async function DELETE(_: Request, { params }: RouteContext) {
+  const { id } = await params;
+  const user = await getSessionUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  let removed = false;
+  let forbidden = false;
+
+  await updateDb((db) => {
+    const target = db.threads.find((entry) => entry.id === id);
+    if (!target) {
+      return db;
+    }
+
+    const canDelete =
+      target.authorId === user.id ||
+      user.role === "admin" ||
+      user.role === "mod";
+    if (!canDelete) {
+      forbidden = true;
+      return db;
+    }
+
+    removed = true;
+
+    const commentIds = new Set(
+      db.comments
+        .filter((comment) => comment.threadId === id)
+        .map((comment) => comment.id),
+    );
+
+    return {
+      ...db,
+      threads: db.threads.filter((entry) => entry.id !== id),
+      comments: db.comments.filter((comment) => comment.threadId !== id),
+      commentVotes: db.commentVotes.filter(
+        (vote) => !commentIds.has(vote.commentId),
+      ),
+      threadVotes: db.threadVotes.filter((vote) => vote.threadId !== id),
+      threadSaves: db.threadSaves.filter((save) => save.threadId !== id),
+      threadViews: db.threadViews.filter((view) => view.threadId !== id),
+      threadViewEvents: db.threadViewEvents.filter(
+        (view) => view.threadId !== id,
+      ),
+      threadShares: db.threadShares.filter((share) => share.threadId !== id),
+      threadShareEvents: db.threadShareEvents.filter(
+        (share) => share.threadId !== id,
+      ),
+      reports: db.reports.filter(
+        (report) =>
+          !(
+            (report.type === "thread" && report.targetId === id) ||
+            (report.type === "comment" && commentIds.has(report.targetId))
+          ),
+      ),
+    };
+  });
+
+  if (!removed) {
+    if (forbidden) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    return NextResponse.json({ error: "Thread not found" }, { status: 404 });
+  }
+
+  return NextResponse.json({ ok: true });
 }
