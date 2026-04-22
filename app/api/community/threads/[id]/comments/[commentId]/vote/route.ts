@@ -41,7 +41,7 @@ export async function POST(
         {
           commentId,
           userId: user.id,
-          value: payload.value,
+          value: payload.value as 1 | -1,
           createdAt: new Date().toISOString(),
         },
       ],

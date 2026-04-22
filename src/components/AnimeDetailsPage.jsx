@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useEffect } from 'react';
-import Image from 'next/image';
-import { useSelector, useDispatch } from 'react-redux';
-import { fetchDetails } from '../redux/features/Details/detailsSlice';
+import React, { useEffect } from "react";
+import Image from "next/image";
+import { useSelector, useDispatch } from "react-redux";
+import { fetchDetails } from "../redux/features/Details/detailsSlice";
 
 const AnimeDetailsPage = ({ animeId }) => {
   const dispatch = useDispatch();
@@ -25,9 +25,7 @@ const AnimeDetailsPage = ({ animeId }) => {
     return (
       <div className="anime-details-page">
         <div className="error-message">
-          Error loading anime details:
-          {' '}
-          {error}
+          Error loading anime details: {error}
         </div>
       </div>
     );
@@ -58,30 +56,53 @@ const AnimeDetailsPage = ({ animeId }) => {
     <main className="page-shell">
       <section className="detail-hero">
         <div className="detail-media">
-          <Image src={images?.jpg?.image_url || ''} alt={title} width={320} height={460} />
+          <Image
+            src={images?.jpg?.image_url || ""}
+            alt={title}
+            width={320}
+            height={460}
+          />
         </div>
         <div className="detail-copy">
           <h1>{title}</h1>
           <p>{synopsis}</p>
           <div className="stats-grid">
-            <div><span>Episodes</span><strong>{episodes || 'N/A'}</strong></div>
-            <div><span>Aired</span><strong>{aired?.string || 'N/A'}</strong></div>
-            <div><span>Rating</span><strong>{rating || 'N/A'}</strong></div>
-            <div><span>Score</span><strong>{score || 'N/A'}</strong></div>
-            <div><span>Popularity</span><strong>{popularity || 'N/A'}</strong></div>
+            <div>
+              <span>Episodes</span>
+              <strong>{episodes || "N/A"}</strong>
+            </div>
+            <div>
+              <span>Aired</span>
+              <strong>{aired?.string || "N/A"}</strong>
+            </div>
+            <div>
+              <span>Rating</span>
+              <strong>{rating || "N/A"}</strong>
+            </div>
+            <div>
+              <span>Score</span>
+              <strong>{score || "N/A"}</strong>
+            </div>
+            <div>
+              <span>Popularity</span>
+              <strong>{popularity || "N/A"}</strong>
+            </div>
           </div>
           <div className="pill-list">
             {genres.map((genre) => (
-              <span key={genre.mal_id} className="badge-pill">{genre.name}</span>
+              <span key={genre.mal_id} className="badge-pill">
+                {genre.name}
+              </span>
             ))}
           </div>
           <div className="pill-list">
             {studios.map((studio) => (
-              <span key={studio.mal_id} className="badge-pill">{studio.name}</span>
+              <span key={studio.mal_id} className="badge-pill">
+                {studio.name}
+              </span>
             ))}
           </div>
         </div>
-      </div>
       </section>
     </main>
   );

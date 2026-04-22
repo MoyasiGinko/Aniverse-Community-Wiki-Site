@@ -20,11 +20,13 @@ export async function GET(req: Request) {
     url.searchParams.get("shareMode") === "unique" ? "unique" : "event";
 
   const selectOrEmpty = async (table: string, columns = "*") => {
-    const { data, error } = await supabase.from(table).select(columns);
-    if (error && (error as { code?: string }).code !== "PGRST205") {
-      throw error;
+    try {
+      const { data, error } = await supabase.from(table).select(columns);
+      if (error) return [];
+      return Array.isArray(data) ? data : [];
+    } catch {
+      return [];
     }
-    return data || [];
   };
 
   const [
@@ -49,7 +51,11 @@ export async function GET(req: Request) {
     selectOrEmpty("app_community_members", "community_id,user_id"),
   ]);
 
-  const threadsBase = threadsRows.map((row) => ({
+  const threadsBase = (
+    threadsRows.filter(
+      (row) => row && typeof row === "object" && "id" in row,
+    ) as any[]
+  ).map((row) => ({
     id: row.id,
     slug: row.slug || "",
     isHighlighted: Boolean(row.is_highlighted),
@@ -74,7 +80,12 @@ export async function GET(req: Request) {
     // Default feed: joined/followed communities plus threads authored by the viewer.
     if (user) {
       const joinedCommunityIds = new Set(
-        memberRows
+        (
+          memberRows.filter(
+            (member) =>
+              member && typeof member === "object" && "user_id" in member,
+          ) as any[]
+        )
           .filter((member) => member.user_id === user.id)
           .map((member) => member.community_id),
       );
@@ -89,7 +100,9 @@ export async function GET(req: Request) {
   }
 
   const commentsCountByThread = new Map<string, number>();
-  for (const comment of commentsRows) {
+  for (const comment of commentsRows.filter(
+    (row) => row && typeof row === "object" && "thread_id" in row,
+  ) as any[]) {
     commentsCountByThread.set(
       comment.thread_id,
       (commentsCountByThread.get(comment.thread_id) || 0) + 1,
@@ -98,7 +111,10 @@ export async function GET(req: Request) {
 
   const upvotesByThread = new Map<string, number>();
   const downvotesByThread = new Map<string, number>();
-  for (const vote of votesRows) {
+  for (const vote of votesRows.filter(
+    (row) =>
+      row && typeof row === "object" && "thread_id" in row && "value" in row,
+  ) as any[]) {
     if (vote.value === 1) {
       upvotesByThread.set(
         vote.thread_id,
@@ -114,7 +130,9 @@ export async function GET(req: Request) {
   }
 
   const savesByThread = new Map<string, number>();
-  for (const save of savesRows) {
+  for (const save of savesRows.filter(
+    (row) => row && typeof row === "object" && "thread_id" in row,
+  ) as any[]) {
     savesByThread.set(
       save.thread_id,
       (savesByThread.get(save.thread_id) || 0) + 1,
@@ -122,7 +140,9 @@ export async function GET(req: Request) {
   }
 
   const viewsByThread = new Map<string, number>();
-  for (const view of viewEventRows) {
+  for (const view of viewEventRows.filter(
+    (row) => row && typeof row === "object" && "thread_id" in row,
+  ) as any[]) {
     viewsByThread.set(
       view.thread_id,
       (viewsByThread.get(view.thread_id) || 0) + 1,
@@ -131,7 +151,9 @@ export async function GET(req: Request) {
 
   const sharesByThread = new Map<string, number>();
   const shareSource = shareMode === "unique" ? shareRows : shareEventRows;
-  for (const share of shareSource) {
+  for (const share of shareSource.filter(
+    (row) => row && typeof row === "object" && "thread_id" in row,
+  ) as any[]) {
     sharesByThread.set(
       share.thread_id,
       (sharesByThread.get(share.thread_id) || 0) + 1,
@@ -140,7 +162,15 @@ export async function GET(req: Request) {
 
   const savedByMe = new Set(
     user
-      ? savesRows
+      ? (
+          savesRows.filter(
+            (save) =>
+              save &&
+              typeof save === "object" &&
+              "user_id" in save &&
+              "thread_id" in save,
+          ) as any[]
+        )
           .filter((save) => save.user_id === user.id)
           .map((save) => save.thread_id)
       : [],
@@ -148,7 +178,15 @@ export async function GET(req: Request) {
 
   const sharedByMe = new Set(
     user
-      ? shareEventRows
+      ? (
+          shareEventRows.filter(
+            (share) =>
+              share &&
+              typeof share === "object" &&
+              "user_id" in share &&
+              "thread_id" in share,
+          ) as any[]
+        )
           .filter((share) => share.user_id === user.id)
           .map((share) => share.thread_id)
       : [],
@@ -156,7 +194,14 @@ export async function GET(req: Request) {
 
   const userVoteByThread = new Map<string, 1 | -1>();
   if (user) {
-    for (const vote of votesRows) {
+    for (const vote of votesRows.filter(
+      (row) =>
+        row &&
+        typeof row === "object" &&
+        "user_id" in row &&
+        "thread_id" in row &&
+        "value" in row,
+    ) as any[]) {
       if (vote.user_id === user.id) {
         userVoteByThread.set(vote.thread_id, vote.value);
       }
@@ -164,7 +209,11 @@ export async function GET(req: Request) {
   }
 
   const userById = new Map(
-    userRows.map((item) => [
+    (
+      userRows.filter(
+        (row) => row && typeof row === "object" && "id" in row,
+      ) as any[]
+    ).map((item) => [
       item.id,
       {
         id: item.id,

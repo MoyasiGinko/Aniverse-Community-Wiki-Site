@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { apiRequest } from "@/src/lib/apiClient";
+import TrendingThreads from "@/src/components/TrendingThreads";
 
 type Community = {
   id: string;
@@ -742,6 +743,7 @@ export default function CommunitiesIndexPage() {
               </li>
             ))}
           </ul>
+          <TrendingThreads />
         </aside>
       </section>
     </main>

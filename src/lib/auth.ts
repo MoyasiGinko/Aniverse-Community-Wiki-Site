@@ -34,8 +34,8 @@ export function verifyPassword(input: string, stored: string): boolean {
       .scryptSync(input, salt, PASSWORD_KEY_LEN)
       .toString("hex");
     return crypto.timingSafeEqual(
-      Buffer.from(derived, "hex"),
-      Buffer.from(hash, "hex"),
+      new Uint8Array(Buffer.from(derived, "hex")),
+      new Uint8Array(Buffer.from(hash, "hex")),
     );
   }
 

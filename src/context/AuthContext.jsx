@@ -1,9 +1,25 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { apiRequest } from '../lib/apiClient';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { apiRequest } from "../lib/apiClient";
 
-const AuthContext = createContext(null);
+const AuthContext = createContext({
+  /** @type {any} */
+  user: null,
+  loading: true,
+  isAuthenticated: false,
+  setUser: (user) => {},
+  login: (user) => {},
+  logout: async () => {},
+  refreshUser: async () => null,
+});
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -12,7 +28,7 @@ export function AuthProvider({ children }) {
   const refreshUser = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await apiRequest('/api/auth/me');
+      const data = await apiRequest("/api/auth/me");
       setUser(data.user || null);
       return data.user || null;
     } catch {
@@ -32,11 +48,11 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(async () => {
-    await apiRequest('/api/auth/logout', { method: 'POST' });
+    await apiRequest("/api/auth/logout", { method: "POST" });
     setUser(null);
   }, []);
 
-  const value = useMemo(() => ({
+  const value = {
     user,
     loading,
     isAuthenticated: Boolean(user),
@@ -44,7 +60,7 @@ export function AuthProvider({ children }) {
     login,
     logout,
     refreshUser,
-  }), [user, loading, login, logout, refreshUser]);
+  };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
@@ -52,7 +68,7 @@ export function AuthProvider({ children }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
+    throw new Error("useAuth must be used within AuthProvider");
   }
   return context;
 }

@@ -1,32 +1,35 @@
-import crypto from 'node:crypto';
-import { NextResponse } from 'next/server';
-import { getSessionUser } from '@/src/lib/auth';
-import { readDb, updateDb, type WikiRecord } from '@/src/lib/db';
+import crypto from "node:crypto";
+import { NextResponse } from "next/server";
+import { getSessionUser } from "@/src/lib/auth";
+import { readDb, updateDb, type WikiRecord } from "@/src/lib/db";
 
 export const revalidate = 60;
 
 export async function GET() {
   const db = await readDb();
-  return NextResponse.json({
-    entries: db.wiki.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
-  }, {
-    headers: {
-      'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
+  return NextResponse.json(
+    {
+      entries: db.wiki.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
     },
-  });
+    {
+      headers: {
+        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
+      },
+    },
+  );
 }
 
 export async function POST(req: Request) {
   const user = await getSessionUser();
   if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const payload = (await req.json()) as {
     title?: string;
     body?: string;
     tags?: string[];
-    status?: WikiRecord['status'];
+    status?: WikiRecord["status"];
     malAnimeId?: number | null;
     malAnimeTitle?: string;
     coverImageUrl?: string;
@@ -34,13 +37,16 @@ export async function POST(req: Request) {
   };
 
   if (!payload.title || !payload.body) {
-    return NextResponse.json({ error: 'title and body are required' }, { status: 400 });
+    return NextResponse.json(
+      { error: "title and body are required" },
+      { status: 400 },
+    );
   }
 
   const slug = payload.title
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '');
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
 
   const entry: WikiRecord = {
     id: crypto.randomUUID(),
@@ -48,12 +54,15 @@ export async function POST(req: Request) {
     title: payload.title,
     body: payload.body,
     tags: payload.tags || [],
-    status: payload.status || 'draft',
+    status: payload.status || "draft",
     malAnimeId: payload.malAnimeId ?? null,
-    malAnimeTitle: payload.malAnimeTitle?.trim() || '',
-    coverImageUrl: payload.coverImageUrl?.trim() || '',
-    extraImageUrls: (payload.extraImageUrls || []).map((item) => item.trim()).filter(Boolean),
+    malAnimeTitle: payload.malAnimeTitle?.trim() || "",
+    coverImageUrl: payload.coverImageUrl?.trim() || "",
+    extraImageUrls: (payload.extraImageUrls || [])
+      .map((item) => item.trim())
+      .filter(Boolean),
     authorId: user.id,
+    communityId: null,
     revision: 1,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

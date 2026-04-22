@@ -1,23 +1,30 @@
-import crypto from 'node:crypto';
-import { NextResponse } from 'next/server';
-import { issueToken, publicUser, SESSION_COOKIE } from '@/src/lib/auth';
-import { updateDb, type UserRecord } from '@/src/lib/db';
+import crypto from "node:crypto";
+import { NextResponse } from "next/server";
+import { issueToken, publicUser, SESSION_COOKIE } from "@/src/lib/auth";
+import { updateDb, type UserRecord } from "@/src/lib/db";
 
 export async function POST(req: Request) {
   const payload = (await req.json()) as {
-    provider?: 'google' | 'discord' | 'facebook' | 'github';
+    provider?: "google" | "discord" | "facebook" | "github";
     email?: string;
     username?: string;
   };
 
-  const allowedProviders = new Set(['google', 'discord', 'facebook', 'github']);
+  const allowedProviders = new Set(["google", "discord", "facebook", "github"]);
 
-  if (!payload.provider || !allowedProviders.has(payload.provider) || !payload.email) {
-    return NextResponse.json({ error: 'provider and email are required' }, { status: 400 });
+  if (
+    !payload.provider ||
+    !allowedProviders.has(payload.provider) ||
+    !payload.email
+  ) {
+    return NextResponse.json(
+      { error: "provider and email are required" },
+      { status: 400 },
+    );
   }
 
   const email = payload.email.trim().toLowerCase();
-  const username = payload.username?.trim() || email.split('@')[0] || 'member';
+  const username = payload.username?.trim() || email.split("@")[0] || "member";
 
   let activeUser: UserRecord | null = null;
   const token = issueToken();
@@ -39,27 +46,36 @@ export async function POST(req: Request) {
       id: crypto.randomUUID(),
       email,
       username,
-      passwordHash: '',
-      provider: payload.provider,
-      role: 'user',
-      bio: '',
-      avatarUrl: '',
+      passwordHash: "",
+      provider: payload.provider as
+        | "google"
+        | "discord"
+        | "facebook"
+        | "github",
+      role: "user",
+      bio: "",
+      avatarUrl: "",
       joinedAt: new Date().toISOString(),
     };
     activeUser = user;
     return {
       ...db,
       users: [...db.users, user],
-      sessions: [...db.sessions, { token, userId: user.id, createdAt: new Date().toISOString() }],
+      sessions: [
+        ...db.sessions,
+        { token, userId: user.id, createdAt: new Date().toISOString() },
+      ],
     };
   });
 
-  const res = NextResponse.json({ user: activeUser ? publicUser(activeUser) : null });
+  const res = NextResponse.json({
+    user: activeUser ? publicUser(activeUser) : null,
+  });
   res.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,
-    sameSite: 'lax',
-    path: '/',
-    secure: process.env.NODE_ENV === 'production',
+    sameSite: "lax",
+    path: "/",
+    secure: process.env.NODE_ENV === "production",
     maxAge: 60 * 60 * 24 * 7,
   });
   return res;

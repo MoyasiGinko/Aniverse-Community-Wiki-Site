@@ -1,13 +1,13 @@
-import type { Metadata } from 'next';
-import type { ReactNode } from 'react';
-import Providers from '@/src/providers';
-import NavBar from '@/src/components/NavBar';
-import Footer from '@/src/components/Footer';
-import '@/src/index.css';
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
+import Providers from "@/src/providers";
+import NavBar from "@/src/components/NavBar";
+import Footer from "@/src/components/Footer";
+import "@/src/index.css";
 
 export const metadata: Metadata = {
-  title: 'Aniverse',
-  description: 'Aniverse Community Wiki',
+  title: "Aniverse",
+  description: "Aniverse Community Wiki",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -16,11 +16,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         <Providers>
           <div className="app-shell">
-            <main className="app-main">
-              <NavBar />
-              <div className="devider" />
-              {children}
-            </main>
+            <NavBar />
+            <div className="app-container">
+              <main className="app-main">
+                <div className="devider" />
+                {children}
+              </main>
+            </div>
             <Footer />
           </div>
         </Providers>
