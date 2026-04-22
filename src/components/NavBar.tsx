@@ -15,7 +15,7 @@ const NavBar = () => {
   const [isAccountOpen, setAccountOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, loading, logout } = useAuth();
 
   const toggleOverlay = () => {
     setOverlayOpen(!isOverlayOpen);
@@ -98,7 +98,11 @@ const NavBar = () => {
             Community
           </Link>
           <ThemeToggle />
-          {isAuthenticated ? (
+          {loading ? (
+            <span className="nav-cta" aria-busy="true">
+              Loading...
+            </span>
+          ) : isAuthenticated ? (
             <div className="account-menu">
               <button
                 type="button"
