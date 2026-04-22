@@ -107,6 +107,68 @@ a {
   background: color-mix(in srgb, var(--surface) 70%, var(--bg));
 }
 
+.auth-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgb(20 12 8 / 0.62);
+  backdrop-filter: blur(12px);
+}
+
+.auth-modal-card {
+  width: min(520px, 100%);
+  padding: 1.4rem;
+  border-radius: 24px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--elev-2);
+  display: grid;
+  gap: 0.9rem;
+}
+
+.auth-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.auth-modal-card h2 {
+  font-size: 1.25rem;
+}
+
+.auth-modal-copy {
+  color: var(--muted);
+}
+
+.auth-modal-close {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 80%, var(--brand) 12%);
+  color: var(--text);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.auth-modal-actions {
+  justify-content: flex-end;
+}
+
+.auth-lock-panel {
+  margin-bottom: 1rem;
+  border: 1px solid color-mix(in srgb, var(--brand) 30%, var(--border));
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--surface) 92%, var(--brand) 8%),
+    color-mix(in srgb, var(--surface-soft) 90%, var(--brand) 10%)
+  );
+}
+
 .footer-shell {
   width: min(1240px, 94vw);
   margin: 0 auto;
@@ -1432,6 +1494,55 @@ button.community-thread-stat {
 
 .wiki-skeleton-side {
   min-height: 420px;
+}
+
+.protected-skeleton-shell {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.protected-skeleton-grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+}
+
+.protected-skeleton-stack {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.protected-skeleton-title {
+  width: min(320px, 70%);
+  height: 2.75rem;
+  margin-bottom: var(--space-2);
+}
+
+.protected-skeleton-copy {
+  width: min(540px, 90%);
+  height: 1.1rem;
+}
+
+.protected-skeleton-nav {
+  min-height: 480px;
+}
+
+.protected-skeleton-card {
+  min-height: 200px;
+}
+
+.protected-skeleton-card.short {
+  min-height: 140px;
+}
+
+@media (max-width: 900px) {
+  .protected-skeleton-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .protected-skeleton-nav {
+    min-height: 120px;
+  }
 }
 
 .fade-in-up {

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/src/lib/auth";
-import { updateDb } from "@/src/lib/db";
+import { readDb, updateDb } from "@/src/lib/db";
 
 export async function GET() {
   const user = await getSessionUser();
@@ -8,7 +8,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const db = await updateDb((state) => state);
+  const db = await readDb();
   return NextResponse.json({
     items: db.watchlist.filter((entry) => entry.userId === user.id),
   });

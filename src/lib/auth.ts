@@ -73,6 +73,15 @@ export async function getSessionUser(): Promise<UserRecord | null> {
     return null;
   }
 
+  const resolveFromLocalDb = async () => {
+    const db = await readDb();
+    const session = db.sessions.find((entry) => entry.token === token);
+    if (!session) {
+      return null;
+    }
+    return db.users.find((user) => user.id === session.userId) ?? null;
+  };
+
   try {
     const { data: sessionRow, error: sessionError } = await supabase
       .from("app_sessions")
@@ -81,7 +90,7 @@ export async function getSessionUser(): Promise<UserRecord | null> {
       .maybeSingle();
 
     if (sessionError || !sessionRow?.user_id) {
-      return null;
+      return await resolveFromLocalDb();
     }
 
     const { data: userRow, error: userError } = await supabase
@@ -91,7 +100,7 @@ export async function getSessionUser(): Promise<UserRecord | null> {
       .maybeSingle();
 
     if (userError || !userRow) {
-      return null;
+      return await resolveFromLocalDb();
     }
 
     return {
@@ -107,12 +116,7 @@ export async function getSessionUser(): Promise<UserRecord | null> {
     };
   } catch {
     // Fallback path for environments where direct queries fail.
-    const db = await readDb();
-    const session = db.sessions.find((entry) => entry.token === token);
-    if (!session) {
-      return null;
-    }
-    return db.users.find((user) => user.id === session.userId) ?? null;
+    return resolveFromLocalDb();
   }
 }
 

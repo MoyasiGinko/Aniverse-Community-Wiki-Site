@@ -1,9 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { apiRequest } from "@/src/lib/apiClient";
+import { ApiError, apiRequest } from "@/src/lib/apiClient";
 import { useAuth } from "@/src/context/AuthContext";
+import { useProtectedAuth } from "@/src/hooks/useProtectedAuth";
+import ProtectedPageSkeleton from "@/src/components/ProtectedPageSkeleton";
 
 type SettingsTab = "profile" | "security" | "preferences" | "privacy";
 
@@ -17,7 +20,14 @@ export default function SettingsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialTab = (searchParams.get("tab") as SettingsTab) || "profile";
-  const { user, setUser, refreshUser, loading } = useAuth();
+  const { setUser } = useAuth();
+  const {
+    user,
+    checking: authChecking,
+    accessBlocked,
+    requestSignIn,
+    handleUnauthorized,
+  } = useProtectedAuth();
 
   const [tab, setTab] = useState<SettingsTab>(initialTab);
   const [username, setUsername] = useState("");
@@ -32,39 +42,71 @@ export default function SettingsPage() {
   const [sessionActionToken, setSessionActionToken] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  const loadProfileData = async () => {
+    const data = await apiRequest<{
+      profile: { username: string; bio: string; avatarUrl: string };
+    }>("/api/profile", {
+      suppressAuthPrompt: true,
+    });
+    setUsername(data.profile.username);
+    setBio(data.profile.bio || "");
+    setAvatarUrl(data.profile.avatarUrl || "");
+    setThemePref(localStorage.getItem("aniverse_theme_pref") || "system");
+    setShowEmail(localStorage.getItem("aniverse_privacy_show_email") === "1");
+  };
 
   useEffect(() => {
     const load = async () => {
-      const me = await refreshUser();
-      if (!me) {
-        router.push("/auth");
+      if (authChecking) {
         return;
       }
 
+      if (accessBlocked || !user) {
+        setProfileLoading(false);
+        return;
+      }
+
+      setProfileLoading(true);
+      setError("");
+
       try {
-        const data = await apiRequest<{
-          profile: { username: string; bio: string; avatarUrl: string };
-        }>("/api/profile");
-        setUsername(data.profile.username);
-        setBio(data.profile.bio || "");
-        setAvatarUrl(data.profile.avatarUrl || "");
-        setThemePref(localStorage.getItem("aniverse_theme_pref") || "system");
-        setShowEmail(
-          localStorage.getItem("aniverse_privacy_show_email") === "1",
-        );
-      } catch {
-        router.push("/auth");
+        await loadProfileData();
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) {
+          const syncedUser = await handleUnauthorized();
+
+          if (syncedUser) {
+            try {
+              await loadProfileData();
+              return;
+            } catch (retryError) {
+              if (retryError instanceof ApiError && retryError.status === 401) {
+                await handleUnauthorized();
+                return;
+              }
+              setError((retryError as Error).message);
+              return;
+            }
+          }
+          return;
+        }
+        setError((err as Error).message);
+      } finally {
+        setProfileLoading(false);
       }
     };
 
     load();
-  }, [refreshUser, router]);
+  }, [accessBlocked, authChecking, handleUnauthorized, user]);
 
   const loadSessions = async () => {
     setSessionLoading(true);
     try {
       const payload = await apiRequest<{ sessions: SessionItem[] }>(
         "/api/auth/sessions",
+        { suppressAuthPrompt: true },
       );
       setSessions(payload.sessions || []);
     } catch (err) {
@@ -97,12 +139,12 @@ export default function SettingsPage() {
         profile: {
           username: string;
           email: string;
-          role: string;
+          role: "user" | "mod" | "admin";
           bio: string;
           avatarUrl: string;
           id: string;
-          provider: string;
-          joinedAt: string;
+          provider?: "local" | "google" | "discord" | "facebook" | "github";
+          joinedAt?: string;
         };
       }>("/api/profile", {
         method: "PUT",
@@ -349,10 +391,30 @@ export default function SettingsPage() {
     );
   };
 
-  if (loading && !user) {
+  if (authChecking || profileLoading) {
+    return (
+      <ProtectedPageSkeleton
+        title="Verifying settings access"
+        detail="Resolving your account and preferences before the settings UI mounts."
+      />
+    );
+  }
+
+  if (accessBlocked) {
     return (
       <main className="feature-page">
-        <p>Loading settings...</p>
+        <section className="section-block auth-lock-panel">
+          <h1>Settings access required</h1>
+          <p>Sign in to manage your profile, security, and preferences.</p>
+          <div className="inline-actions">
+            <button type="button" onClick={requestSignIn} className="nav-cta">
+              Open Sign In
+            </button>
+            <Link href="/auth" className="action-button ghost">
+              Go to auth page
+            </Link>
+          </div>
+        </section>
       </main>
     );
   }

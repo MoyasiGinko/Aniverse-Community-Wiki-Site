@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { apiRequest } from "@/src/lib/apiClient";
-import { useAuth } from "@/src/context/AuthContext";
+import { ApiError, apiRequest } from "@/src/lib/apiClient";
+import { useProtectedAuth } from "@/src/hooks/useProtectedAuth";
+import ProtectedPageSkeleton from "@/src/components/ProtectedPageSkeleton";
 
 type WatchlistItem = {
   animeId: string;
@@ -105,8 +105,13 @@ type ManagedReplyRecord = {
 };
 
 export default function DashboardPage() {
-  const router = useRouter();
-  const { user, refreshUser, loading } = useAuth();
+  const {
+    user,
+    checking: authChecking,
+    accessBlocked,
+    requestSignIn,
+    handleUnauthorized,
+  } = useProtectedAuth();
   const [panel, setPanel] = useState<Panel>("command");
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [stats, setStats] = useState<StatsPayload | null>(null);
@@ -135,52 +140,89 @@ export default function DashboardPage() {
   const [editingReplyBody, setEditingReplyBody] = useState("");
   const [error, setError] = useState("");
 
+  const loadDashboardData = async () => {
+    const [
+      list,
+      statsPayload,
+      activityPayload,
+      communitiesPayload,
+      sessionsPayload,
+    ] = await Promise.all([
+      apiRequest<{ items: WatchlistItem[] }>("/api/watchlist", {
+        suppressAuthPrompt: true,
+      }),
+      apiRequest<{ stats: StatsPayload }>("/api/stats", {
+        suppressAuthPrompt: true,
+      }),
+      apiRequest<{
+        activity: {
+          threads: ThreadRecord[];
+          comments: CommentRecord[];
+          wiki: WikiRecord[];
+          savedThreads: SavedThreadRecord[];
+          managedReplies: ManagedReplyRecord[];
+        };
+      }>("/api/community/my-activity", {
+        suppressAuthPrompt: true,
+      }),
+      apiRequest<{ communities: CommunityRecord[] }>("/api/communities", {
+        suppressAuthPrompt: true,
+      }),
+      apiRequest<{ sessions: SessionItem[] }>("/api/auth/sessions", {
+        suppressAuthPrompt: true,
+      }),
+    ]);
+
+    setWatchlist(list.items);
+    setStats(statsPayload.stats);
+    setThreads(activityPayload.activity.threads);
+    setComments(activityPayload.activity.comments);
+    setWiki(activityPayload.activity.wiki);
+    setSavedThreads(activityPayload.activity.savedThreads || []);
+    setManagedReplies(activityPayload.activity.managedReplies || []);
+    setJoinedCommunities(
+      (communitiesPayload.communities || []).filter((community) =>
+        Boolean(community.joined),
+      ),
+    );
+    setSessions(sessionsPayload.sessions || []);
+  };
+
   useEffect(() => {
     const load = async () => {
-      setDataLoading(true);
-      const me = await refreshUser();
-      if (!me) {
-        router.push("/auth");
+      if (authChecking) {
         return;
       }
 
-      try {
-        const [
-          list,
-          statsPayload,
-          activityPayload,
-          communitiesPayload,
-          sessionsPayload,
-        ] = await Promise.all([
-          apiRequest<{ items: WatchlistItem[] }>("/api/watchlist"),
-          apiRequest<{ stats: StatsPayload }>("/api/stats"),
-          apiRequest<{
-            activity: {
-              threads: ThreadRecord[];
-              comments: CommentRecord[];
-              wiki: WikiRecord[];
-              savedThreads: SavedThreadRecord[];
-              managedReplies: ManagedReplyRecord[];
-            };
-          }>("/api/community/my-activity"),
-          apiRequest<{ communities: CommunityRecord[] }>("/api/communities"),
-          apiRequest<{ sessions: SessionItem[] }>("/api/auth/sessions"),
-        ]);
+      if (accessBlocked || !user) {
+        setDataLoading(false);
+        return;
+      }
 
-        setWatchlist(list.items);
-        setStats(statsPayload.stats);
-        setThreads(activityPayload.activity.threads);
-        setComments(activityPayload.activity.comments);
-        setWiki(activityPayload.activity.wiki);
-        setSavedThreads(activityPayload.activity.savedThreads || []);
-        setManagedReplies(activityPayload.activity.managedReplies || []);
-        setJoinedCommunities(
-          (communitiesPayload.communities || []).filter((community) =>
-            Boolean(community.joined),
-          ),
-        );
-        setSessions(sessionsPayload.sessions || []);
+      setDataLoading(true);
+      setError("");
+
+      try {
+        await loadDashboardData();
       } catch (err) {
+        if (err instanceof ApiError && err.status === 401) {
+          const syncedUser = await handleUnauthorized();
+
+          if (syncedUser) {
+            try {
+              await loadDashboardData();
+              return;
+            } catch (retryError) {
+              if (retryError instanceof ApiError && retryError.status === 401) {
+                await handleUnauthorized();
+                return;
+              }
+              setError((retryError as Error).message);
+              return;
+            }
+          }
+          return;
+        }
         setError((err as Error).message);
       } finally {
         setDataLoading(false);
@@ -188,7 +230,7 @@ export default function DashboardPage() {
     };
 
     load();
-  }, [router, refreshUser]);
+  }, [accessBlocked, authChecking, handleUnauthorized, user]);
 
   const refreshActivity = async () => {
     const activityPayload = await apiRequest<{
@@ -435,10 +477,33 @@ export default function DashboardPage() {
     return items.filter((item) => item.kind === activityView);
   }, [activityView, comments, managedReplies, savedThreads, threads, wiki]);
 
-  if ((loading || dataLoading) && !user) {
+  if (authChecking || dataLoading) {
+    return (
+      <ProtectedPageSkeleton
+        title="Verifying dashboard access"
+        detail="Loading your account, permissions, sessions, and activity panels."
+      />
+    );
+  }
+
+  if (accessBlocked && !dataLoading) {
     return (
       <main className="feature-page">
-        <p>Loading your dashboard...</p>
+        <section className="section-block auth-lock-panel">
+          <h1>Dashboard access required</h1>
+          <p>
+            Sign in to manage your activity, watchlist, sessions, and content
+            permissions.
+          </p>
+          <div className="inline-actions">
+            <button type="button" onClick={requestSignIn} className="nav-cta">
+              Open Sign In
+            </button>
+            <Link href="/auth" className="action-button ghost">
+              Go to auth page
+            </Link>
+          </div>
+        </section>
       </main>
     );
   }

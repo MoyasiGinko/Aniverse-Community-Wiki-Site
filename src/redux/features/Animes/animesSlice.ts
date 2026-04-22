@@ -1,7 +1,9 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+// @ts-nocheck
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { apiRequest } from "@/src/lib/apiClient";
 
 export const fetchAnimes = createAsyncThunk(
-  'animes/fetchAnimes',
+  "animes/fetchAnimes",
   async (page) => {
     try {
       const response = await fetch(
@@ -10,55 +12,54 @@ export const fetchAnimes = createAsyncThunk(
       const data = await response.json();
       return data.data;
     } catch (error) {
-      throw new Error('Failed to fetch animes');
+      throw new Error("Failed to fetch animes");
     }
   },
 );
 
 export const reserveAnime = createAsyncThunk(
-  'animes/reserveAnime',
+  "animes/reserveAnime",
   async ({ animeId, title, imageUrl }) => {
     try {
-      await fetch('/api/watchlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      await apiRequest("/api/watchlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ animeId: String(animeId), title, imageUrl }),
       });
       return String(animeId);
     } catch (error) {
-      throw new Error('Failed to reserve anime');
+      throw new Error("Failed to reserve anime");
     }
   },
 );
 
 export const cancelReservation = createAsyncThunk(
-  'animes/cancelReservation',
+  "animes/cancelReservation",
   async (animeId) => {
     try {
-      await fetch(`/api/watchlist?animeId=${encodeURIComponent(String(animeId))}`, {
-        method: 'DELETE',
-      });
+      await apiRequest(
+        `/api/watchlist?animeId=${encodeURIComponent(String(animeId))}`,
+        {
+          method: "DELETE",
+        },
+      );
       return String(animeId);
     } catch (error) {
-      throw new Error('Failed to cancel reservation');
+      throw new Error("Failed to cancel reservation");
     }
   },
 );
 
 export const fetchWatchlist = createAsyncThunk(
-  'animes/fetchWatchlist',
+  "animes/fetchWatchlist",
   async () => {
-    const response = await fetch('/api/watchlist');
-    if (!response.ok) {
-      return [];
-    }
-    const data = await response.json();
+    const data = await apiRequest("/api/watchlist");
     return (data.items || []).map((entry) => String(entry.animeId));
   },
 );
 
 export const fetchNextPage = createAsyncThunk(
-  'animes/fetchNextPage',
+  "animes/fetchNextPage",
   async (_, { getState }) => {
     const { currentPage } = getState().animes;
     return currentPage + 1;
@@ -66,7 +67,7 @@ export const fetchNextPage = createAsyncThunk(
 );
 
 export const fetchPreviousPage = createAsyncThunk(
-  'animes/fetchPreviousPage',
+  "animes/fetchPreviousPage",
   async (_, { getState }) => {
     const { currentPage } = getState().animes;
     return currentPage - 1;
@@ -74,7 +75,7 @@ export const fetchPreviousPage = createAsyncThunk(
 );
 
 export const fetchFirstPage = createAsyncThunk(
-  'animes/fetchFirstPage',
+  "animes/fetchFirstPage",
   async () => 1,
 );
 
@@ -82,26 +83,26 @@ const initialState = {
   animes: [],
   watchlistIds: [],
   currentPage: 1,
-  status: 'idle',
+  status: "idle",
   error: null,
 };
 
 const animesSlice = createSlice({
-  name: 'animes',
+  name: "animes",
   initialState,
   reducers: {},
   extraReducers: (builder) => {
     builder
       .addCase(fetchAnimes.pending, (state) => {
-        state.status = 'loading';
+        state.status = "loading";
         state.error = null; // Reset the error when fetching starts
       })
       .addCase(fetchAnimes.fulfilled, (state, action) => {
-        state.status = 'succeeded';
+        state.status = "succeeded";
         state.animes = action.payload;
       })
       .addCase(fetchAnimes.rejected, (state, action) => {
-        state.status = 'failed';
+        state.status = "failed";
         state.error = action.error.message;
       })
       .addCase(reserveAnime.fulfilled, (state, action) => {

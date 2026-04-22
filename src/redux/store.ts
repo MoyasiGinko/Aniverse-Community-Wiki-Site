@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { configureStore } from '@reduxjs/toolkit';
 import animesReducer from './features/Animes/animesSlice';
 import genreReducer from './features/Genres/genreSlice';

@@ -736,8 +736,31 @@ export async function writeDb(data: AppDb): Promise<void> {
 export async function updateDb(
   updater: (db: AppDb) => AppDb | Promise<AppDb>,
 ): Promise<AppDb> {
-  const current = await readDb();
-  const next = await updater(current);
-  await writeDb(next);
-  return next;
+  if (
+    !(globalThis as { __aniverseDbUpdateQueue?: Promise<void> })
+      .__aniverseDbUpdateQueue
+  ) {
+    (
+      globalThis as { __aniverseDbUpdateQueue?: Promise<void> }
+    ).__aniverseDbUpdateQueue = Promise.resolve();
+  }
+
+  const queueState = globalThis as { __aniverseDbUpdateQueue?: Promise<void> };
+  const previous = queueState.__aniverseDbUpdateQueue as Promise<void>;
+
+  let release: () => void = () => {};
+  queueState.__aniverseDbUpdateQueue = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+
+  await previous;
+
+  try {
+    const current = await readDb();
+    const next = await updater(current);
+    await writeDb(next);
+    return next;
+  } finally {
+    release();
+  }
 }
