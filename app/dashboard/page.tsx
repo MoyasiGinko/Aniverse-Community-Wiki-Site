@@ -26,6 +26,7 @@ type ThreadRecord = {
   communitySlug: string | null;
   title: string;
   body: string;
+  imageUrls: string[];
   authorId: string;
   createdAt: string;
 };
@@ -122,12 +123,14 @@ export default function DashboardPage() {
   const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [activityView, setActivityView] = useState<ActivityView>("all");
+  const [activityExpanded, setActivityExpanded] = useState(false);
   const [manageView, setManageView] = useState<ManageView>("threads");
   const [manageExpanded, setManageExpanded] = useState(false);
   const [processingId, setProcessingId] = useState("");
   const [editingThreadId, setEditingThreadId] = useState("");
   const [editingThreadTitle, setEditingThreadTitle] = useState("");
   const [editingThreadBody, setEditingThreadBody] = useState("");
+  const [editingThreadImageUrls, setEditingThreadImageUrls] = useState("");
   const [editingReplyId, setEditingReplyId] = useState("");
   const [editingReplyBody, setEditingReplyBody] = useState("");
   const [error, setError] = useState("");
@@ -237,6 +240,7 @@ export default function DashboardPage() {
     setEditingThreadId(thread.id);
     setEditingThreadTitle(thread.title);
     setEditingThreadBody(thread.body);
+    setEditingThreadImageUrls((thread.imageUrls || []).join("\n"));
   };
 
   const onSaveThreadEdit = async () => {
@@ -252,11 +256,16 @@ export default function DashboardPage() {
         body: JSON.stringify({
           title: editingThreadTitle,
           body: editingThreadBody,
+          imageUrls: editingThreadImageUrls
+            .split(/\n|,/)
+            .map((item) => item.trim())
+            .filter(Boolean),
         }),
       });
       setEditingThreadId("");
       setEditingThreadTitle("");
       setEditingThreadBody("");
+      setEditingThreadImageUrls("");
       await refreshActivity();
     } catch (err) {
       setError((err as Error).message);
@@ -529,96 +538,24 @@ export default function DashboardPage() {
 
     if (panel === "activity") {
       return (
-        <section className="dashboard-split-layout">
-          <aside className="workspace-sidebar section-block">
-            <h3>Activity Views</h3>
-            <button
-              type="button"
-              className={
-                activityView === "all"
-                  ? "workspace-link active"
-                  : "workspace-link"
-              }
-              onClick={() => setActivityView("all")}
-            >
-              All Activity
-            </button>
-            <button
-              type="button"
-              className={
-                activityView === "threads"
-                  ? "workspace-link active"
-                  : "workspace-link"
-              }
-              onClick={() => setActivityView("threads")}
-            >
-              Threads
-            </button>
-            <button
-              type="button"
-              className={
-                activityView === "replies"
-                  ? "workspace-link active"
-                  : "workspace-link"
-              }
-              onClick={() => setActivityView("replies")}
-            >
-              Replies
-            </button>
-            <button
-              type="button"
-              className={
-                activityView === "comments"
-                  ? "workspace-link active"
-                  : "workspace-link"
-              }
-              onClick={() => setActivityView("comments")}
-            >
-              My Comments
-            </button>
-            <button
-              type="button"
-              className={
-                activityView === "wiki"
-                  ? "workspace-link active"
-                  : "workspace-link"
-              }
-              onClick={() => setActivityView("wiki")}
-            >
-              Wiki
-            </button>
-            <button
-              type="button"
-              className={
-                activityView === "saved"
-                  ? "workspace-link active"
-                  : "workspace-link"
-              }
-              onClick={() => setActivityView("saved")}
-            >
-              Saved Threads
-            </button>
-          </aside>
-
-          <section className="section-block dashboard-card list-panel">
-            <h2>Community Activity</h2>
-            <p>Navigation feed only. Click any activity to open its source.</p>
-            {activityItems.length ? (
-              <ul>
-                {activityItems.map((item) => (
-                  <li key={item.id}>
-                    <Link href={item.href} className="activity-link-item">
-                      <strong>{item.title}</strong>
-                      <p>{item.description}</p>
-                      <small>{new Date(item.createdAt).toLocaleString()}</small>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p>No activity in this view yet.</p>
-            )}
-          </section>
+        <section className="section-block dashboard-card list-panel">
+          <h2>Community Activity</h2>
+          <p>Navigation feed only. Click any activity to open its source.</p>
+          {activityItems.length ? (
+            <ul>
+              {activityItems.map((item) => (
+                <li key={item.id}>
+                  <Link href={item.href} className="activity-link-item">
+                    <strong>{item.title}</strong>
+                    <p>{item.description}</p>
+                    <small>{new Date(item.createdAt).toLocaleString()}</small>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>No activity in this view yet.</p>
+          )}
         </section>
       );
     }
@@ -649,6 +586,14 @@ export default function DashboardPage() {
                               setEditingThreadBody(event.target.value)
                             }
                           />
+                          <textarea
+                            rows={4}
+                            value={editingThreadImageUrls}
+                            onChange={(event) =>
+                              setEditingThreadImageUrls(event.target.value)
+                            }
+                            placeholder="Attachment URLs (one per line or comma-separated)"
+                          />
                           <div className="inline-actions">
                             <button
                               type="button"
@@ -667,6 +612,7 @@ export default function DashboardPage() {
                                 setEditingThreadId("");
                                 setEditingThreadTitle("");
                                 setEditingThreadBody("");
+                                setEditingThreadImageUrls("");
                               }}
                             >
                               Cancel
@@ -677,6 +623,11 @@ export default function DashboardPage() {
                         <>
                           <strong>{thread.title}</strong>
                           <p>{thread.body.slice(0, 180)}</p>
+                          {thread.imageUrls?.length ? (
+                            <small>
+                              {thread.imageUrls.length} attachment(s)
+                            </small>
+                          ) : null}
                           <div className="inline-actions">
                             <Link
                               href={threadHref(
@@ -950,10 +901,105 @@ export default function DashboardPage() {
             className={
               panel === "activity" ? "workspace-link active" : "workspace-link"
             }
-            onClick={() => setPanel("activity")}
+            aria-expanded={activityExpanded}
+            onClick={() => {
+              setPanel("activity");
+              setActivityExpanded((prev) => !prev);
+            }}
           >
-            Activity Feed
+            <span>Activity Feed</span>
+            <span className="workspace-chevron" aria-hidden="true">
+              {activityExpanded ? "▾" : "▸"}
+            </span>
           </button>
+          {activityExpanded ? (
+            <div className="workspace-nested-links">
+              <button
+                type="button"
+                className={
+                  panel === "activity" && activityView === "all"
+                    ? "workspace-link workspace-link-nested active"
+                    : "workspace-link workspace-link-nested"
+                }
+                onClick={() => {
+                  setPanel("activity");
+                  setActivityView("all");
+                }}
+              >
+                All Activity
+              </button>
+              <button
+                type="button"
+                className={
+                  panel === "activity" && activityView === "threads"
+                    ? "workspace-link workspace-link-nested active"
+                    : "workspace-link workspace-link-nested"
+                }
+                onClick={() => {
+                  setPanel("activity");
+                  setActivityView("threads");
+                }}
+              >
+                Threads
+              </button>
+              <button
+                type="button"
+                className={
+                  panel === "activity" && activityView === "replies"
+                    ? "workspace-link workspace-link-nested active"
+                    : "workspace-link workspace-link-nested"
+                }
+                onClick={() => {
+                  setPanel("activity");
+                  setActivityView("replies");
+                }}
+              >
+                Replies
+              </button>
+              <button
+                type="button"
+                className={
+                  panel === "activity" && activityView === "comments"
+                    ? "workspace-link workspace-link-nested active"
+                    : "workspace-link workspace-link-nested"
+                }
+                onClick={() => {
+                  setPanel("activity");
+                  setActivityView("comments");
+                }}
+              >
+                My Comments
+              </button>
+              <button
+                type="button"
+                className={
+                  panel === "activity" && activityView === "wiki"
+                    ? "workspace-link workspace-link-nested active"
+                    : "workspace-link workspace-link-nested"
+                }
+                onClick={() => {
+                  setPanel("activity");
+                  setActivityView("wiki");
+                }}
+              >
+                Wiki
+              </button>
+              <button
+                type="button"
+                className={
+                  panel === "activity" && activityView === "saved"
+                    ? "workspace-link workspace-link-nested active"
+                    : "workspace-link workspace-link-nested"
+                }
+                onClick={() => {
+                  setPanel("activity");
+                  setActivityView("saved");
+                }}
+              >
+                Saved Threads
+              </button>
+            </div>
+          ) : null}
           <button
             type="button"
             className={
