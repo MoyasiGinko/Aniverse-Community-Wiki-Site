@@ -260,6 +260,11 @@ a {
   font-weight: 700;
 }
 
+.account-trigger:hover {
+  background: var(--brand);
+  color: #fff;
+}
+
 .account-dropdown {
   display: none;
   position: absolute;
@@ -2048,6 +2053,15 @@ button:hover {
 
 .theme-toggle small {
   color: var(--muted);
+}
+
+.theme-toggle:hover {
+  background: var(--brand);
+  color: #fff;
+}
+
+.theme-toggle:hover small {
+  color: #fff;
 }
 
 .badge-pill {
