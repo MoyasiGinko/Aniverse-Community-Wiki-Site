@@ -55,33 +55,53 @@ const NavBar = () => {
           <div>
             <strong>Aniverse</strong>
             <span>Anime Discovery + Community</span>
-          </div>
-        </Link>
+          </div>        </Link>
 
         <nav className={`navBar ${isOverlayOpen ? "open" : ""}`}>
           <Link href="/" className={navClassName("/")} onClick={closeOverlay}>
             Home
           </Link>
           <Link
-            href="/anime"
-            className={navClassName("/anime")}
+            href="/animes"
+            className={navClassName("/animes")}
             onClick={closeOverlay}
           >
-            Anime
+            Animes
           </Link>
           <Link
-            href="/genres"
-            className={navClassName("/genres")}
+            href="/games"
+            className={navClassName("/games")}
             onClick={closeOverlay}
           >
-            Genres
+            Games
           </Link>
           <Link
-            href="/search"
-            className={navClassName("/search")}
+            href="/movies-series"
+            className={navClassName("/movies-series")}
             onClick={closeOverlay}
           >
-            Search
+            Movies & Series
+          </Link>
+          <Link
+            href="/musics"
+            className={navClassName("/musics")}
+            onClick={closeOverlay}
+          >
+            Musics
+          </Link>
+          <Link
+            href="/books"
+            className={navClassName("/books")}
+            onClick={closeOverlay}
+          >
+            Books
+          </Link>
+          <Link
+            href="/news"
+            className={navClassName("/news")}
+            onClick={closeOverlay}
+          >
+            News
           </Link>
           <Link
             href="/wiki"

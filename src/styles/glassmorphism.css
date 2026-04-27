@@ -1,0 +1,76 @@
+/* css variables for glassmorphism and modern dark theme, appended for new domains */
+:root {
+  --primary-color: #e50914; /* Netflix red */
+  --bg-color-dark: #0f1014;
+  --bg-color-dark-glass: rgba(15, 16, 20, 0.7);
+  --border-glass: rgba(255, 255, 255, 0.1);
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1aa;
+}
+
+[data-theme='dark'] {
+  --background: var(--bg-color-dark);
+  --foreground: var(--text-primary);
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+.glass-panel {
+  background: var(--bg-color-dark-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-glass);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+}
+
+.domain-card {
+  border-radius: 12px;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.domain-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* Base styles for the new domain architecture */
+.domain-hero {
+  position: relative;
+  width: 100%;
+  height: 60vh;
+  min-height: 400px;
+  display: flex;
+  align-items: flex-end;
+  padding: 40px;
+  background-size: cover;
+  background-position: center;
+  border-radius: 16px;
+  margin-bottom: 2rem;
+}
+
+.domain-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, var(--bg-color-dark) 0%, transparent 100%);
+  border-radius: 16px;
+}
+
+.domain-hero-content {
+  position: relative;
+  z-index: 1;
+  max-width: 800px;
+}
+
+.horizontal-carousel {
+  display: flex;
+  overflow-x: auto;
+  gap: 16px;
+  padding-bottom: 16px;
+  scrollbar-width: none;
+}
+.horizontal-carousel::-webkit-scrollbar {
+  display: none;
+}

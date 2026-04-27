@@ -16,6 +16,7 @@
     "@reduxjs/toolkit": "^1.9.5",
     "@supabase/supabase-js": "^2.49.4",
     "axios": "^1.4.0",
+    "framer-motion": "^12.38.0",
     "next": "latest",
     "prop-types": "^15.8.1",
     "react": "latest",

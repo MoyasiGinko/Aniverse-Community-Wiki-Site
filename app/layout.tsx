@@ -4,6 +4,7 @@ import Providers from "@/src/providers";
 import NavBar from "@/src/components/NavBar";
 import Footer from "@/src/components/Footer";
 import "@/src/index.css";
+import "@/src/styles/glassmorphism.css";
 
 export const metadata: Metadata = {
   title: "Aniverse",
@@ -19,7 +20,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <NavBar />
             <div className="app-container">
               <main className="app-main">
-                <div className="devider" />
+                {/* <div className="devider" /> */}
                 {children}
               </main>
             </div>
