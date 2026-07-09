@@ -8,6 +8,7 @@ const ThemeToggle = () => {
 
   useEffect(() => {
     const saved = localStorage.getItem('aniverse_theme') || 'light';
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTheme(saved);
     document.body.dataset.theme = saved;
   }, []);

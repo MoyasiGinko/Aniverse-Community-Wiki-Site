@@ -4,13 +4,13 @@ import { existsSync } from 'node:fs';
 
 test('critical feature routes exist', () => {
   const required = [
-    'app/auth/page.tsx',
-    'app/profile/page.tsx',
-    'app/profile/edit/page.tsx',
-    'app/wiki/page.tsx',
-    'app/community/page.tsx',
-    'app/stats/page.tsx',
-    'app/moderation/page.tsx',
+    'app/(auth)/auth/page.tsx',
+    'app/(auth)/profile/page.tsx',
+    'app/(auth)/profile/edit/page.tsx',
+    'app/(wiki)/wiki/page.tsx',
+    'app/(community)/community/page.tsx',
+    'app/(auth)/stats/page.tsx',
+    'app/(admin)/moderation/page.tsx',
   ];
 
   for (const route of required) {

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ApiError, apiRequest } from "@/src/lib/apiClient";
 import { useProtectedAuth } from "@/src/hooks/useProtectedAuth";
 import ProtectedPageSkeleton from "@/src/components/ProtectedPageSkeleton";
+import { createClient } from "@/src/lib/supabaseClient";
 
 type WatchlistItem = {
   animeId: string;
@@ -139,6 +140,38 @@ export default function DashboardPage() {
   const [editingReplyId, setEditingReplyId] = useState("");
   const [editingReplyBody, setEditingReplyBody] = useState("");
   const [error, setError] = useState("");
+  const [identities, setIdentities] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchIdentities = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setIdentities(user.identities || []);
+      }
+    };
+    if (user) {
+      fetchIdentities();
+    }
+  }, [user]);
+
+  const handleLinkIdentity = async (provider: string) => {
+    setError("");
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.linkIdentity({
+        provider: provider as any,
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+        },
+      });
+      if (error) {
+        throw new Error(error.message);
+      }
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
 
   const loadDashboardData = async () => {
     const [
@@ -881,8 +914,49 @@ export default function DashboardPage() {
     }
 
     return (
-      <section className="section-block dashboard-card list-panel">
-        <h2>Connected Footprint</h2>
+      <section className="section-block dashboard-card list-panel text-white">
+        <h2>Identity Connections</h2>
+        <p className="meta-line mb-6">
+          Link multiple social logins to sign in to the same account securely.
+        </p>
+        <div className="connections-provider-list space-y-4 mb-8">
+          {[
+            { id: "google", name: "Google", icon: "💎" },
+            { id: "discord", name: "Discord", icon: "🎮" },
+            { id: "facebook", name: "Facebook", icon: "👥" },
+            { id: "github", name: "GitHub", icon: "💻" },
+          ].map((p) => {
+            const isLinked = identities.some((id) => id.provider === p.id);
+            return (
+              <div
+                key={p.id}
+                className="flex items-center justify-between p-4 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)]"
+              >
+                <div className="flex items-center space-x-3">
+                  <span className="text-xl">{p.icon}</span>
+                  <span className="font-semibold text-sm">{p.name}</span>
+                </div>
+                <div>
+                  {isLinked ? (
+                    <span className="px-3 py-1 text-xs font-bold text-green-400 bg-green-500/10 rounded-full border border-green-500/20">
+                      ✓ Connected
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleLinkIdentity(p.id)}
+                      className="px-4 py-1.5 text-xs font-bold rounded-xl text-white bg-[var(--brand)] hover:bg-[var(--brand-strong)] transition-all"
+                    >
+                      Connect
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <h2>Community Footprint</h2>
         <h3>Communities</h3>
         {joinedCommunities.length ? (
           <ul>
@@ -898,7 +972,7 @@ export default function DashboardPage() {
         ) : (
           <p>You have not joined a community yet.</p>
         )}
-        <h3>Badges and Recognition</h3>
+        <h3 className="mt-6">Badges and Recognition</h3>
         <div className="pill-list">
           {(stats?.badges || []).length ? (
             (stats?.badges || []).map((badge) => (
@@ -910,7 +984,7 @@ export default function DashboardPage() {
             <span className="meta-line">No badges yet.</span>
           )}
         </div>
-        <h3>Core Counters</h3>
+        <h3 className="mt-6">Core Counters</h3>
         <ul>
           <li>Threads created: {stats?.threadCount || 0}</li>
           <li>Comments posted: {stats?.commentCount || 0}</li>

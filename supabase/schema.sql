@@ -282,3 +282,78 @@ begin
     create policy allow_all_reports on public.app_reports for all using (true) with check (true);
   end if;
 end $$;
+
+-- Automated User Synchronization trigger from auth.users to public.app_users
+create or replace function public.handle_new_user()
+returns trigger as $$
+declare
+  username_val text;
+  provider_val text;
+  avatar_url_val text;
+begin
+  -- Extract username from metadata or name or email
+  username_val := coalesce(
+    new.raw_user_meta_data->>'username',
+    new.raw_user_meta_data->>'full_name',
+    new.raw_user_meta_data->>'name',
+    split_part(new.email, '@', 1)
+  );
+  
+  -- Clean up username (letters, numbers, _, -, .) to match validation rules
+  username_val := substring(regexp_replace(username_val, '[^a-zA-Z0-9_.-]', '', 'g') from 1 for 24);
+  if length(username_val) < 3 then
+    username_val := username_val || '_user';
+  end if;
+
+  -- Extract provider
+  provider_val := coalesce(new.raw_app_meta_data->>'provider', 'local');
+  if provider_val = 'email' then
+    provider_val := 'local';
+  end if;
+
+  -- Extract avatar URL
+  avatar_url_val := coalesce(
+    new.raw_user_meta_data->>'avatar_url',
+    new.raw_user_meta_data->>'picture',
+    ''
+  );
+
+  insert into public.app_users (id, email, username, password_hash, provider, role, bio, avatar_url, joined_at)
+  values (
+    new.id,
+    new.email,
+    username_val,
+    '',
+    provider_val,
+    'user',
+    '',
+    avatar_url_val,
+    new.created_at
+  )
+  on conflict (id) do update
+  set email = excluded.email,
+      username = coalesce(public.app_users.username, excluded.username),
+      avatar_url = coalesce(nullif(public.app_users.avatar_url, ''), excluded.avatar_url);
+  
+  return new;
+end;
+$$ language plpgsql security definer;
+
+-- Recreate trigger on auth.users
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+
+-- Secure RLS Policies for production use
+alter table public.app_users enable row level security;
+drop policy if exists allow_all_users on public.app_users;
+create policy select_public_users on public.app_users for select using (true);
+create policy update_own_user on public.app_users for update using (auth.uid() = id) with check (auth.uid() = id);
+
+alter table public.app_watchlist enable row level security;
+drop policy if exists allow_all_watchlist on public.app_watchlist;
+create policy select_own_watchlist on public.app_watchlist for select using (auth.uid() = user_id);
+create policy insert_own_watchlist on public.app_watchlist for insert with check (auth.uid() = user_id);
+create policy delete_own_watchlist on public.app_watchlist for delete using (auth.uid() = user_id);
+

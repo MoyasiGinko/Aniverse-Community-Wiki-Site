@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { ApiError, apiRequest } from "../lib/apiClient";
+import { createClient } from "../lib/supabaseClient";
 
 export type AuthUser = {
   id: string;
@@ -53,6 +54,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 const AUTH_EVENT_KEY = "aniverse:auth:event";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const supabaseClient = useMemo(() => createClient(), []);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -171,8 +173,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    refreshUser({ preserveUser: false }).catch(() => null);
-  }, [refreshUser]);
+    const initSession = async () => {
+      try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session) {
+          await refreshUser({ force: true });
+        } else {
+          setUser(null);
+          setLoading(false);
+        }
+      } catch {
+        setUser(null);
+        setLoading(false);
+      }
+    };
+    initSession();
+
+    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(async (event, session) => {
+      if (session) {
+        const profile = await refreshUser({ force: true });
+        setUser(profile);
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabaseClient, refreshUser]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -183,71 +212,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refreshUser({ background: true, preserveUser: true }).catch(() => null);
     };
 
-    const onStorage = (event: StorageEvent) => {
-      if (event.key !== AUTH_EVENT_KEY || !event.newValue) {
-        return;
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        syncFromServer();
       }
-
-      try {
-        const payload = JSON.parse(event.newValue) as AuthEventPayload;
-
-        if (payload.type === "logout") {
-          setUser(null);
-          setLoading(false);
-          setRefreshing(false);
-          setSignInPromptOpen(false);
-          return;
-        }
-
-        if (payload.type === "login" && payload.payload) {
-          setUser(payload.payload);
-          setLoading(false);
-          setRefreshing(false);
-          setSignInPromptOpen(false);
-          return;
-        }
-      } catch {
-        // Ignore malformed payloads.
-      }
-
-      syncFromServer();
     };
 
-    window.addEventListener("storage", onStorage);
-
-    if ("BroadcastChannel" in window) {
-      channelRef.current = new BroadcastChannel("aniverse-auth");
-      channelRef.current.onmessage = (
-        event: MessageEvent<AuthEventPayload>,
-      ) => {
-        const message = event.data || { type: "logout", payload: null, at: 0 };
-
-        if (message.type === "logout") {
-          setUser(null);
-          setLoading(false);
-          setRefreshing(false);
-          setSignInPromptOpen(false);
-          return;
-        }
-
-        if (message.type === "login" && message.payload) {
-          setUser(message.payload);
-          setLoading(false);
-          setRefreshing(false);
-          setSignInPromptOpen(false);
-          return;
-        }
-
-        syncFromServer();
-      };
-    }
+    window.addEventListener("focus", syncFromServer);
+    window.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
-      window.removeEventListener("storage", onStorage);
-      if (channelRef.current) {
-        channelRef.current.close();
-        channelRef.current = null;
-      }
+      window.removeEventListener("focus", syncFromServer);
+      window.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [refreshUser]);
 

@@ -430,26 +430,110 @@ async function replaceTable(
   rows: Record<string, unknown>[],
 ) {
   try {
-    const wipe = await supabase.from(table).delete().not(idColumn, "is", null);
-    if (wipe.error) {
-      if ((wipe.error as { code?: string }).code === "PGRST205") {
+    const { data: dbRows, error: selectError } = await supabase.from(table).select("*");
+    if (selectError) {
+      if ((selectError as { code?: string }).code === "PGRST205") {
         return;
       }
-      console.warn(`[Supabase Wipe Error on ${table}]`, wipe.error);
+      console.warn(`[Supabase Select Error on ${table} for sync]`, selectError);
+      if (rows.length > 0) {
+        await insertWithSchemaFallback(table, idColumn, rows);
+      }
+      return;
     }
+
+    const currentRows = dbRows || [];
+
+    const conflictColumnsByTable: Record<string, string> = {
+      app_watchlist: "user_id,anime_id",
+      app_community_members: "community_id,user_id",
+      app_thread_votes: "thread_id,user_id",
+      app_thread_saves: "thread_id,user_id",
+      app_thread_views: "thread_id,user_id",
+      app_thread_shares: "thread_id,user_id",
+      app_comment_votes: "comment_id,user_id",
+    };
+
+    const keyString = conflictColumnsByTable[table] || idColumn;
+    const keyColumns = keyString.split(",");
+
+    const getRowKey = (row: Record<string, any>) =>
+      keyColumns.map((col) => String(row[col] ?? "")).join("::");
+
+    const currentMap = new Map<string, Record<string, any>>();
+    for (const row of currentRows) {
+      currentMap.set(getRowKey(row), row);
+    }
+
+    const nextMap = new Map<string, Record<string, any>>();
+    for (const row of rows) {
+      nextMap.set(getRowKey(row), row);
+    }
+
+    const toDelete: Record<string, any>[] = [];
+    const toInsert: Record<string, any>[] = [];
+    const toUpdate: Record<string, any>[] = [];
+
+    for (const [key, currentRow] of currentMap.entries()) {
+      if (!nextMap.has(key)) {
+        toDelete.push(currentRow);
+      }
+    }
+
+    for (const [key, nextRow] of nextMap.entries()) {
+      const currentRow = currentMap.get(key);
+      if (!currentRow) {
+        toInsert.push(nextRow);
+      } else {
+        let changed = false;
+        for (const k of Object.keys(nextRow)) {
+          const v1 = currentRow[k];
+          const v2 = nextRow[k];
+          if (Array.isArray(v1) || Array.isArray(v2)) {
+            if (JSON.stringify(v1) !== JSON.stringify(v2)) {
+              changed = true;
+              break;
+            }
+          } else if (v1 !== v2) {
+            changed = true;
+            break;
+          }
+        }
+        if (changed) {
+          toUpdate.push(nextRow);
+        }
+      }
+    }
+
+    for (const row of toDelete) {
+      let query = supabase.from(table).delete();
+      for (const col of keyColumns) {
+        query = query.eq(col, row[col]);
+      }
+      const res = await query;
+      if (res.error && (res.error as { code?: string }).code !== "PGRST205") {
+        console.warn(`[Supabase Sync Delete Error on ${table}]`, res.error);
+      }
+    }
+
+    if (toInsert.length > 0) {
+      await insertWithSchemaFallback(table, idColumn, toInsert);
+    }
+
+    for (const row of toUpdate) {
+      let query = supabase.from(table).update(row);
+      for (const col of keyColumns) {
+        query = query.eq(col, row[col]);
+      }
+      const res = await query;
+      if (res.error && (res.error as { code?: string }).code !== "PGRST205") {
+        console.warn(`[Supabase Sync Update Error on ${table}]`, res.error);
+      }
+    }
+
   } catch (e) {
     if ((e as { code?: string }).code !== "PGRST205") {
-      console.warn(`[Supabase Wipe Exception on ${table}]`, e);
-    }
-  }
-
-  if (rows.length > 0) {
-    try {
-      await insertWithSchemaFallback(table, idColumn, rows);
-    } catch (e) {
-      if ((e as { code?: string }).code !== "PGRST205") {
-        console.warn(`[Supabase Insert Exception on ${table}]`, e);
-      }
+      console.warn(`[Supabase Sync Exception on ${table}]`, e);
     }
   }
 }

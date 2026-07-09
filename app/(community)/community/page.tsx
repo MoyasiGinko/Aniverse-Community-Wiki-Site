@@ -182,6 +182,7 @@ export default function CommunitiesIndexPage() {
     const date = new Date(value).getTime();
     if (Number.isNaN(date)) return "just now";
 
+    // eslint-disable-next-line react-hooks/purity
     const seconds = Math.max(1, Math.floor((Date.now() - date) / 1000));
     if (seconds < 60) return `${seconds}s ago`;
 

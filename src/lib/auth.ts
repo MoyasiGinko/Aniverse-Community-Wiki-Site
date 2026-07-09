@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { cookies } from "next/headers";
 import { readDb, type Role, type UserRecord } from "./db";
-import { supabase } from "./supabase";
+import { createClient } from "./supabaseServer";
 
 export const SESSION_COOKIE = "aniverse_session";
 
@@ -33,9 +33,17 @@ export function verifyPassword(input: string, stored: string): boolean {
     const derived = crypto
       .scryptSync(input, salt, PASSWORD_KEY_LEN)
       .toString("hex");
+    
+    const derivedBuf = Buffer.from(derived, "hex");
+    const hashBuf = Buffer.from(hash, "hex");
+    
+    if (derivedBuf.length !== hashBuf.length) {
+      return false;
+    }
+    
     return crypto.timingSafeEqual(
-      new Uint8Array(Buffer.from(derived, "hex")),
-      new Uint8Array(Buffer.from(hash, "hex")),
+      new Uint8Array(derivedBuf),
+      new Uint8Array(hashBuf),
     );
   }
 
@@ -66,57 +74,39 @@ export function issueToken(): string {
 }
 
 export async function getSessionUser(): Promise<UserRecord | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE)?.value;
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
 
-  if (!token) {
-    return null;
-  }
-
-  const resolveFromLocalDb = async () => {
-    const db = await readDb();
-    const session = db.sessions.find((entry) => entry.token === token);
-    if (!session) {
+    if (!authUser) {
       return null;
     }
-    return db.users.find((user) => user.id === session.userId) ?? null;
-  };
 
-  try {
-    const { data: sessionRow, error: sessionError } = await supabase
-      .from("app_sessions")
-      .select("user_id")
-      .eq("token", token)
-      .maybeSingle();
-
-    if (sessionError || !sessionRow?.user_id) {
-      return await resolveFromLocalDb();
-    }
-
-    const { data: userRow, error: userError } = await supabase
+    const { data: userRow, error } = await supabase
       .from("app_users")
       .select("*")
-      .eq("id", sessionRow.user_id)
+      .eq("id", authUser.id)
       .maybeSingle();
 
-    if (userError || !userRow) {
-      return await resolveFromLocalDb();
+    if (error || !userRow) {
+      return null;
     }
 
     return {
       id: userRow.id,
       email: userRow.email,
       username: userRow.username,
-      passwordHash: userRow.password_hash,
-      provider: userRow.provider,
-      role: userRow.role,
+      passwordHash: userRow.password_hash || "",
+      provider: userRow.provider || "local",
+      role: (userRow.role as Role) || "user",
       bio: userRow.bio || "",
       avatarUrl: userRow.avatar_url || "",
       joinedAt: userRow.joined_at,
     };
   } catch {
-    // Fallback path for environments where direct queries fail.
-    return resolveFromLocalDb();
+    return null;
   }
 }
 

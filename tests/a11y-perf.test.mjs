@@ -8,7 +8,7 @@ test('global stylesheet includes reduced motion guard', () => {
 });
 
 test('theme toggle component exists', () => {
-  const component = readFileSync('src/components/ThemeToggle.jsx', 'utf8');
+  const component = readFileSync('src/components/ThemeToggle.tsx', 'utf8');
   assert.equal(component.includes('aniverse_theme'), true);
 });
 

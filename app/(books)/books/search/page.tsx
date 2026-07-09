@@ -32,7 +32,7 @@ export default async function BooksSearchPage({
 
       {query ? (
         <>
-          <p className="text-gray-400 mb-6 font-medium">Showing results for "{query}"</p>
+          <p className="text-gray-400 mb-6 font-medium">Showing results for &quot;{query}&quot;</p>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
             {books.map((book: any) => (
               <Card

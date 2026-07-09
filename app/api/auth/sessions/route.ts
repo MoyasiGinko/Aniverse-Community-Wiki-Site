@@ -4,6 +4,8 @@ import { getSessionUser, SESSION_COOKIE } from "@/src/lib/auth";
 import { readDb, updateDb } from "@/src/lib/db";
 import { supabase } from "@/src/lib/supabase";
 
+export const dynamic = "force-dynamic";
+
 type SessionScope = "single" | "others" | "all";
 
 function normalizeScope(value: unknown): SessionScope {
