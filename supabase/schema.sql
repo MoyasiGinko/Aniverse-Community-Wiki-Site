@@ -349,6 +349,7 @@ create trigger on_auth_user_created
 alter table public.app_users enable row level security;
 drop policy if exists allow_all_users on public.app_users;
 create policy select_public_users on public.app_users for select using (true);
+create policy insert_own_user on public.app_users for insert with check (auth.uid() = id);
 create policy update_own_user on public.app_users for update using (auth.uid() = id) with check (auth.uid() = id);
 
 alter table public.app_watchlist enable row level security;

@@ -6,6 +6,28 @@ import { ApiError, apiRequest } from "@/src/lib/apiClient";
 import { useProtectedAuth } from "@/src/hooks/useProtectedAuth";
 import ProtectedPageSkeleton from "@/src/components/ProtectedPageSkeleton";
 import { createClient } from "@/src/lib/supabaseClient";
+import {
+  FiCpu,
+  FiShield,
+  FiActivity,
+  FiLayers,
+  FiBookmark,
+  FiGlobe,
+  FiKey,
+  FiUsers,
+  FiCheckCircle,
+  FiLock,
+  FiUser,
+  FiEdit3,
+  FiTrash2,
+  FiExternalLink,
+  FiAward,
+  FiMessageSquare,
+  FiChevronDown,
+  FiChevronRight,
+} from "react-icons/fi";
+import { FaGoogle, FaDiscord, FaFacebook, FaGithub } from "react-icons/fa";
+import "@/src/styles/auth.css";
 
 type WatchlistItem = {
   animeId: string;
@@ -47,24 +69,36 @@ type WikiRecord = {
   id: string;
   title: string;
   status: string;
+  authorId: string;
   updatedAt: string;
 };
 
 type SavedThreadRecord = {
   id: string;
-  slug: string;
-  title: string;
-  body: string;
-  savedAt: string;
+  threadId: string;
+  threadTitle: string;
+  threadSlug: string;
   communitySlug: string | null;
+  createdAt: string;
+};
+
+type ManagedReplyRecord = {
+  id: string;
+  threadId: string;
+  threadTitle: string;
+  threadSlug: string;
+  communitySlug: string | null;
+  authorName: string;
+  body: string;
+  createdAt: string;
 };
 
 type CommunityRecord = {
   id: string;
-  slug: string;
   name: string;
+  slug: string;
   memberCount: number;
-  joined: boolean;
+  joined?: boolean;
 };
 
 type SessionItem = {
@@ -75,35 +109,25 @@ type SessionItem = {
 
 type Panel =
   | "command"
+  | "security"
   | "activity"
   | "manage"
   | "watchlist"
-  | "security"
   | "connections";
 
-type ActivityView =
-  | "all"
-  | "threads"
-  | "comments"
-  | "wiki"
-  | "saved"
-  | "replies";
-
+type ActivityView = "all" | "threads" | "replies" | "comments" | "wiki" | "saved";
 type ManageView = "threads" | "replies" | "wiki";
 
-type ManagedReplyRecord = {
-  id: string;
-  threadId: string;
-  parentCommentId: string | null;
-  body: string;
-  authorId: string;
-  authorName: string;
-  threadTitle: string;
-  threadSlug: string;
-  communitySlug: string | null;
-  createdAt: string;
-  isMine: boolean;
-};
+function threadHref(
+  threadId: string,
+  threadSlug: string,
+  communitySlug: string | null,
+) {
+  if (communitySlug) {
+    return `/community/${communitySlug}/${threadSlug}`;
+  }
+  return `/community/thread/${threadId}`;
+}
 
 export default function DashboardPage() {
   const {
@@ -120,12 +144,8 @@ export default function DashboardPage() {
   const [comments, setComments] = useState<CommentRecord[]>([]);
   const [wiki, setWiki] = useState<WikiRecord[]>([]);
   const [savedThreads, setSavedThreads] = useState<SavedThreadRecord[]>([]);
-  const [managedReplies, setManagedReplies] = useState<ManagedReplyRecord[]>(
-    [],
-  );
-  const [joinedCommunities, setJoinedCommunities] = useState<CommunityRecord[]>(
-    [],
-  );
+  const [managedReplies, setManagedReplies] = useState<ManagedReplyRecord[]>([]);
+  const [joinedCommunities, setJoinedCommunities] = useState<CommunityRecord[]>([]);
   const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [activityView, setActivityView] = useState<ActivityView>("all");
@@ -232,7 +252,9 @@ export default function DashboardPage() {
         return;
       }
 
-      setDataLoading(true);
+      if (!stats) {
+        setDataLoading(true);
+      }
       setError("");
 
       try {
@@ -263,7 +285,7 @@ export default function DashboardPage() {
     };
 
     load();
-  }, [accessBlocked, authChecking, handleUnauthorized, user]);
+  }, [accessBlocked, authChecking, handleUnauthorized, user, stats]);
 
   const refreshActivity = async () => {
     const activityPayload = await apiRequest<{
@@ -322,21 +344,23 @@ export default function DashboardPage() {
     if (!editingThreadId) {
       return;
     }
-
     setProcessingId(`thread-edit:${editingThreadId}`);
     setError("");
     try {
+      const parsedImageUrls = editingThreadImageUrls
+        .split(/[\n,]+/)
+        .map((url) => url.trim())
+        .filter(Boolean);
+
       await apiRequest(`/api/community/threads/${editingThreadId}`, {
-        method: "PATCH",
+        method: "PUT",
         body: JSON.stringify({
           title: editingThreadTitle,
           body: editingThreadBody,
-          imageUrls: editingThreadImageUrls
-            .split(/\n|,/)
-            .map((item) => item.trim())
-            .filter(Boolean),
+          imageUrls: parsedImageUrls,
         }),
       });
+
       setEditingThreadId("");
       setEditingThreadTitle("");
       setEditingThreadBody("");
@@ -368,13 +392,16 @@ export default function DashboardPage() {
   };
 
   const onSaveReplyEdit = async (threadId: string, commentId: string) => {
+    if (!editingReplyBody.trim()) {
+      return;
+    }
     setProcessingId(`reply-edit:${commentId}`);
     setError("");
     try {
       await apiRequest(
         `/api/community/threads/${threadId}/comments/${commentId}`,
         {
-          method: "PATCH",
+          method: "PUT",
           body: JSON.stringify({ body: editingReplyBody }),
         },
       );
@@ -388,72 +415,55 @@ export default function DashboardPage() {
     }
   };
 
+  const removeFromWatchlist = async (animeId: string) => {
+    setProcessingId(`watchlist:${animeId}`);
+    setError("");
+    try {
+      await apiRequest("/api/watchlist", {
+        method: "DELETE",
+        body: JSON.stringify({ animeId }),
+      });
+      setWatchlist((prev) => prev.filter((item) => item.animeId !== animeId));
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setProcessingId("");
+    }
+  };
+
   const securityInsights = useMemo(() => {
     const messages: string[] = [];
     let score = 100;
 
-    if (!user?.avatarUrl) {
-      score -= 8;
-      messages.push(
-        "Add an avatar to reduce impersonation risk in community flows.",
-      );
+    if (!user?.email) {
+      messages.push("Verify your email to enhance account protection.");
+      score -= 20;
     }
 
-    if (!user?.bio) {
-      score -= 5;
+    if (sessions.length > 3) {
       messages.push(
-        "Complete profile bio for better trust and moderator verification.",
+        "You have several active sessions. Consider revoking unused tokens in Security Settings.",
       );
+      score -= 15;
     }
 
     if (user?.provider === "local") {
       messages.push(
-        "Local auth active. Rotate password regularly and keep it unique.",
+        "Rotate your local password periodically for stronger resilience.",
       );
-    } else {
-      score += 4;
-      messages.push(
-        "SSO provider enabled. Keep your identity provider secured with MFA.",
-      );
+      score -= 10;
     }
 
-    if (sessions.length > 3) {
-      score -= 12;
-      messages.push(
-        "Multiple active sessions detected. Revoke unknown sessions.",
-      );
+    if (!messages.length) {
+      messages.push("Your security posture is robust with zero pending flags.");
     }
 
-    if ((stats?.threadCount || 0) + (stats?.commentCount || 0) === 0) {
-      messages.push(
-        "No community interactions yet. Start contributing to build trust signals.",
-      );
-    }
-
-    if (user?.role === "admin") {
-      score = Math.min(score, 90);
-      messages.push(
-        "Admin account detected. Apply strict session hygiene and regular reviews.",
-      );
-    }
-
-    const bounded = Math.max(50, Math.min(100, score));
-    const level =
-      bounded >= 90 ? "Strong" : bounded >= 75 ? "Moderate" : "Needs Attention";
-
-    return { score: bounded, level, messages: messages.slice(0, 4) };
-  }, [sessions.length, stats?.commentCount, stats?.threadCount, user]);
-
-  const threadHref = (
-    threadId: string,
-    threadSlug?: string,
-    communitySlug?: string | null,
-  ) => {
-    if (communitySlug && threadSlug) {
-      return `/community/${communitySlug}/${threadSlug}`;
-    }
-    return `/community/thread/${threadId}`;
-  };
+    return {
+      score: Math.max(score, 35),
+      messages,
+      level: score >= 85 ? "Strong" : score >= 60 ? "Moderate" : "Needs Review",
+    };
+  }, [sessions.length, user?.email, user?.provider]);
 
   const activityItems = useMemo(() => {
     const items = [
@@ -461,7 +471,7 @@ export default function DashboardPage() {
         id: `thread:${thread.id}`,
         kind: "threads" as const,
         createdAt: thread.createdAt,
-        title: thread.title,
+        title: `Thread: ${thread.title}`,
         description: thread.body.slice(0, 140),
         href: threadHref(thread.id, thread.slug, thread.communitySlug),
       })),
@@ -471,27 +481,23 @@ export default function DashboardPage() {
         createdAt: comment.createdAt,
         title: `Comment on ${comment.threadTitle}`,
         description: comment.body.slice(0, 140),
-        href: threadHref(
-          comment.threadId,
-          comment.threadSlug,
-          comment.communitySlug,
-        ),
+        href: threadHref(comment.threadId, comment.threadSlug, comment.communitySlug),
       })),
       ...wiki.map((entry) => ({
         id: `wiki:${entry.id}`,
         kind: "wiki" as const,
         createdAt: entry.updatedAt,
-        title: entry.title,
-        description: `Wiki status: ${entry.status}`,
+        title: `Wiki: ${entry.title}`,
+        description: `Status: ${entry.status}`,
         href: `/wiki/${entry.id}`,
       })),
-      ...savedThreads.map((thread) => ({
-        id: `saved:${thread.id}`,
+      ...savedThreads.map((saved) => ({
+        id: `saved:${saved.id}`,
         kind: "saved" as const,
-        createdAt: thread.savedAt,
-        title: `Saved: ${thread.title}`,
-        description: thread.body.slice(0, 140),
-        href: threadHref(thread.id, thread.slug, thread.communitySlug),
+        createdAt: saved.createdAt,
+        title: `Saved: ${saved.threadTitle}`,
+        description: "Saved community thread",
+        href: threadHref(saved.threadId, saved.threadSlug, saved.communitySlug),
       })),
       ...managedReplies.map((reply) => ({
         id: `reply:${reply.id}`,
@@ -510,7 +516,7 @@ export default function DashboardPage() {
     return items.filter((item) => item.kind === activityView);
   }, [activityView, comments, managedReplies, savedThreads, threads, wiki]);
 
-  if (authChecking || dataLoading) {
+  if ((authChecking || dataLoading) && !stats) {
     return (
       <ProtectedPageSkeleton
         title="Verifying dashboard access"
@@ -521,15 +527,16 @@ export default function DashboardPage() {
 
   if (accessBlocked && !dataLoading) {
     return (
-      <main className="feature-page">
-        <section className="section-block auth-lock-panel">
+      <main className="feature-page relative overflow-hidden">
+        <div className="bg-glow-1"></div>
+        <section className="section-block auth-lock-panel relative z-10">
           <h1>Dashboard access required</h1>
           <p>
             Sign in to manage your activity, watchlist, sessions, and content
             permissions.
           </p>
           <div className="inline-actions">
-            <button type="button" onClick={requestSignIn} className="nav-cta">
+            <button type="button" onClick={requestSignIn} className="action-button">
               Open Sign In
             </button>
             <Link href="/auth" className="action-button ghost">
@@ -542,410 +549,461 @@ export default function DashboardPage() {
   }
 
   const renderPanel = () => {
+    // ----------------------------------------------------
+    // TAB 1: COMMAND CENTER
+    // ----------------------------------------------------
     if (panel === "command") {
       return (
         <section className="section-block dashboard-card">
-          <h2>Command Center</h2>
-          <p>
-            Enterprise-grade visibility across identity, activity, and connected
-            assets.
-          </p>
+          <div className="settings-header-block">
+            <div className="settings-header-info">
+              <h2>Command Center</h2>
+              <p>Unified visibility across identity, security score, and workspace metrics.</p>
+            </div>
+            <span className="auth-badge">
+              <FiCpu style={{ marginRight: "4px" }} /> System Active
+            </span>
+          </div>
+
           <ul className="metric-list">
             <li>
-              <strong>{securityInsights.score}</strong>
-              <span> Security Score</span>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.2rem" }}>
+                <FiShield style={{ color: "var(--brand)", fontSize: "1.2rem" }} />
+                <strong>{securityInsights.score}</strong>
+              </div>
+              <span>Security Posture Score</span>
             </li>
             <li>
-              <strong>{sessions.length}</strong>
-              <span> Active Sessions</span>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.2rem" }}>
+                <FiKey style={{ color: "var(--brand)", fontSize: "1.2rem" }} />
+                <strong>{sessions.length}</strong>
+              </div>
+              <span>Active Sessions</span>
             </li>
             <li>
-              <strong>{joinedCommunities.length}</strong>
-              <span> Joined Communities</span>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.2rem" }}>
+                <FiUsers style={{ color: "var(--brand)", fontSize: "1.2rem" }} />
+                <strong>{joinedCommunities.length}</strong>
+              </div>
+              <span>Joined Communities</span>
             </li>
             <li>
-              <strong>{watchlist.length}</strong>
-              <span> Watchlist Items</span>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.2rem" }}>
+                <FiBookmark style={{ color: "var(--brand)", fontSize: "1.2rem" }} />
+                <strong>{watchlist.length}</strong>
+              </div>
+              <span>Watchlist Items</span>
             </li>
           </ul>
+
           <div className="security-banner">
-            <strong>Security posture: {securityInsights.level}</strong>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <FiLock style={{ color: "var(--brand)" }} />
+              <strong>Security posture: {securityInsights.level}</strong>
+            </div>
             <p>{securityInsights.messages[0]}</p>
           </div>
+
           <div className="inline-actions">
             <Link href="/settings?tab=security" className="action-button">
-              Open Security Settings
+              <FiShield style={{ marginRight: "6px" }} /> Security Controls
             </Link>
             <Link href="/profile" className="action-button ghost">
-              Review Public Profile
+              <FiUser style={{ marginRight: "6px" }} /> Review Profile
             </Link>
           </div>
         </section>
       );
     }
 
+    // ----------------------------------------------------
+    // TAB 2: SECURITY INTELLIGENCE
+    // ----------------------------------------------------
     if (panel === "security") {
       return (
-        <section className="section-block dashboard-card list-panel">
-          <h2>Security Intelligence</h2>
+        <section className="section-block dashboard-card">
+          <div className="settings-header-block">
+            <div className="settings-header-info">
+              <h2>Security Intelligence</h2>
+              <p>Account identity provider metrics, token sessions, and protection flags.</p>
+            </div>
+            <span className="auth-badge">
+              <FiShield style={{ marginRight: "4px" }} /> Guard Enabled
+            </span>
+          </div>
+
           <div className="security-grid">
             <article className="security-kpi">
               <span>Identity Provider</span>
-              <strong>{user?.provider || "Unknown"}</strong>
+              <strong className="capitalize" style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                {user?.provider === "google" ? <FaGoogle style={{ color: "#ea4335" }} /> : <FaGithub />}
+                {user?.provider || "Local"}
+              </strong>
             </article>
             <article className="security-kpi">
               <span>Access Role</span>
-              <strong>{user?.role || "user"}</strong>
+              <strong className="capitalize" style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                <FiUser style={{ color: "var(--brand)" }} />
+                {user?.role || "user"}
+              </strong>
             </article>
             <article className="security-kpi">
               <span>Session Count</span>
-              <strong>{sessions.length}</strong>
+              <strong style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                <FiKey style={{ color: "var(--brand)" }} />
+                {sessions.length} Devices
+              </strong>
             </article>
             <article className="security-kpi">
-              <span>Posture</span>
-              <strong>{securityInsights.level}</strong>
+              <span>Posture Status</span>
+              <strong style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                <FiCheckCircle style={{ color: "#10b981" }} />
+                {securityInsights.level}
+              </strong>
             </article>
           </div>
-          <h3>Recommendations</h3>
-          <ul>
+
+          <h3 className="dashboard-subheading">Security Recommendations</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {securityInsights.messages.map((message) => (
-              <li key={message}>{message}</li>
+              <div key={message} className="settings-toggle-row" style={{ cursor: "default" }}>
+                <div className="settings-toggle-info">
+                  <span style={{ color: "var(--text)", fontWeight: 700, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <FiCheckCircle style={{ color: "#10b981" }} /> {message}
+                  </span>
+                </div>
+              </div>
             ))}
-          </ul>
-          <h3>Recent Sessions</h3>
+          </div>
+
+          <h3 className="dashboard-subheading">Recent Active Devices</h3>
           {sessions.length ? (
-            <ul>
-              {sessions.slice(0, 6).map((session) => (
-                <li key={session.token}>
-                  {session.isCurrent ? "Current device" : "Active device"} ·{" "}
-                  {new Date(session.createdAt).toLocaleString()}
-                </li>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+              {sessions.slice(0, 5).map((session) => (
+                <div key={session.token} className="session-item-row">
+                  <div className="session-item-info">
+                    <strong>
+                      <FiKey style={{ marginRight: "6px", color: "var(--brand)" }} />
+                      {session.isCurrent ? "Current Active Device Token" : "Active Device Session"}
+                    </strong>
+                    <p>Issued: {new Date(session.createdAt).toLocaleString()}</p>
+                  </div>
+                </div>
               ))}
-            </ul>
+            </div>
           ) : (
-            <p>No active sessions found.</p>
+            <p className="settings-input-helper">No active session tokens found.</p>
           )}
-          <div className="inline-actions">
+
+          <div className="inline-actions" style={{ marginTop: "1rem" }}>
             <Link href="/settings?tab=security" className="action-button">
-              Manage Sessions
+              <FiShield style={{ marginRight: "6px" }} /> Manage Security & Sessions
             </Link>
           </div>
         </section>
       );
     }
 
+    // ----------------------------------------------------
+    // TAB 3: ACTIVITY FEED
+    // ----------------------------------------------------
     if (panel === "activity") {
       return (
-        <section className="section-block dashboard-card list-panel">
-          <h2>Community Activity</h2>
-          <p>Navigation feed only. Click any activity to open its source.</p>
+        <section className="section-block dashboard-card">
+          <div className="settings-header-block">
+            <div className="settings-header-info">
+              <h2>Community Activity Feed</h2>
+              <p>Real-time feed of your community discussions, comments, and saved entries.</p>
+            </div>
+            <span className="auth-badge">
+              <FiActivity style={{ marginRight: "4px" }} /> {activityItems.length} Events
+            </span>
+          </div>
+
+          {/* Subview Filter Bar */}
+          <div className="badge-pill-list mb-4">
+            {(["all", "threads", "replies", "comments", "wiki", "saved"] as const).map((view) => (
+              <button
+                key={view}
+                type="button"
+                className={activityView === view ? "workspace-link-nested active" : "workspace-link-nested"}
+                onClick={() => setActivityView(view)}
+                style={{ textTransform: "capitalize", padding: "0.5rem 0.9rem" }}
+              >
+                {view}
+              </button>
+            ))}
+          </div>
+
           {activityItems.length ? (
-            <ul>
+            <div>
               {activityItems.map((item) => (
-                <li key={item.id}>
-                  <Link href={item.href} className="activity-link-item">
+                <Link key={item.id} href={item.href} className="activity-link-item">
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <strong>{item.title}</strong>
-                    <p>{item.description}</p>
-                    <small>{new Date(item.createdAt).toLocaleString()}</small>
-                  </Link>
-                </li>
+                    <FiExternalLink style={{ color: "var(--brand)", fontSize: "0.9rem" }} />
+                  </div>
+                  <p>{item.description}</p>
+                  <small>{new Date(item.createdAt).toLocaleString()}</small>
+                </Link>
               ))}
-            </ul>
+            </div>
           ) : (
-            <p>No activity in this view yet.</p>
+            <p className="settings-input-helper">No activity recorded for this filter view.</p>
           )}
         </section>
       );
     }
 
+    // ----------------------------------------------------
+    // TAB 4: MANAGE CONTENT
+    // ----------------------------------------------------
     if (panel === "manage") {
       return (
-        <section className="section-block dashboard-card list-panel">
+        <section className="section-block dashboard-card">
+          <div className="settings-header-block">
+            <div className="settings-header-info">
+              <h2>Content Management Center</h2>
+              <p>Edit or remove community threads, comment replies, and wiki articles.</p>
+            </div>
+            <span className="auth-badge">
+              <FiLayers style={{ marginRight: "4px" }} /> Management Portal
+            </span>
+          </div>
+
+          {/* Manage Sub-tab Switcher */}
+          <div className="badge-pill-list mb-4">
+            {(["threads", "replies", "wiki"] as const).map((sub) => (
+              <button
+                key={sub}
+                type="button"
+                className={manageView === sub ? "workspace-link-nested active" : "workspace-link-nested"}
+                onClick={() => setManageView(sub)}
+                style={{ textTransform: "capitalize", padding: "0.5rem 0.9rem" }}
+              >
+                Manage {sub}
+              </button>
+            ))}
+          </div>
+
           {manageView === "threads" ? (
-            <>
-              <h2>Manage Threads</h2>
+            <div>
               {threads.length ? (
-                <ul>
-                  {threads.map((thread) => (
-                    <li key={thread.id}>
-                      {editingThreadId === thread.id ? (
-                        <div className="dashboard-manage-form">
-                          <input
-                            value={editingThreadTitle}
-                            onChange={(event) =>
-                              setEditingThreadTitle(event.target.value)
-                            }
-                            placeholder="Thread title"
-                          />
-                          <textarea
-                            rows={4}
-                            value={editingThreadBody}
-                            onChange={(event) =>
-                              setEditingThreadBody(event.target.value)
-                            }
-                          />
-                          <textarea
-                            rows={4}
-                            value={editingThreadImageUrls}
-                            onChange={(event) =>
-                              setEditingThreadImageUrls(event.target.value)
-                            }
-                            placeholder="Attachment URLs (one per line or comma-separated)"
-                          />
-                          <div className="inline-actions">
-                            <button
-                              type="button"
-                              className="action-button"
-                              onClick={onSaveThreadEdit}
-                              disabled={
-                                processingId === `thread-edit:${thread.id}`
-                              }
-                            >
-                              Save
-                            </button>
-                            <button
-                              type="button"
-                              className="action-button ghost"
-                              onClick={() => {
-                                setEditingThreadId("");
-                                setEditingThreadTitle("");
-                                setEditingThreadBody("");
-                                setEditingThreadImageUrls("");
-                              }}
-                            >
-                              Cancel
-                            </button>
-                          </div>
+                threads.map((thread) => (
+                  <div key={thread.id} className="session-item-row" style={{ flexDirection: "column", alignItems: "stretch", gap: "0.75rem", marginBottom: "1rem" }}>
+                    {editingThreadId === thread.id ? (
+                      <div className="settings-form-grid">
+                        <input
+                          className="settings-input"
+                          value={editingThreadTitle}
+                          onChange={(e) => setEditingThreadTitle(e.target.value)}
+                          placeholder="Thread title"
+                        />
+                        <textarea
+                          className="settings-textarea"
+                          rows={4}
+                          value={editingThreadBody}
+                          onChange={(e) => setEditingThreadBody(e.target.value)}
+                        />
+                        <div className="inline-actions">
+                          <button type="button" className="action-button small" onClick={onSaveThreadEdit} disabled={processingId === `thread-edit:${thread.id}`}>
+                            Save Changes
+                          </button>
+                          <button type="button" className="action-button ghost small" onClick={() => setEditingThreadId("")}>
+                            Cancel
+                          </button>
                         </div>
-                      ) : (
-                        <>
-                          <strong>{thread.title}</strong>
-                          <p>{thread.body.slice(0, 180)}</p>
-                          {thread.imageUrls?.length ? (
-                            <small>
-                              {thread.imageUrls.length} attachment(s)
-                            </small>
-                          ) : null}
-                          <div className="inline-actions">
-                            <Link
-                              href={threadHref(
-                                thread.id,
-                                thread.slug,
-                                thread.communitySlug,
-                              )}
-                              className="action-button ghost small"
-                            >
-                              View
-                            </Link>
-                            <button
-                              type="button"
-                              className="action-button ghost small"
-                              onClick={() => onStartThreadEdit(thread)}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              className="action-button ghost small"
-                              onClick={() => onDeleteThread(thread.id)}
-                              disabled={processingId === `thread:${thread.id}`}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <strong style={{ fontSize: "1rem", color: "var(--text)" }}>{thread.title}</strong>
+                          <span className="settings-input-helper">{new Date(thread.createdAt).toLocaleDateString()}</span>
+                        </div>
+                        <p className="settings-input-helper">{thread.body.slice(0, 180)}...</p>
+                        <div className="inline-actions">
+                          <Link href={threadHref(thread.id, thread.slug, thread.communitySlug)} className="action-button ghost small">
+                            <FiExternalLink style={{ marginRight: "4px" }} /> View
+                          </Link>
+                          <button type="button" className="action-button ghost small" onClick={() => onStartThreadEdit(thread)}>
+                            <FiEdit3 style={{ marginRight: "4px" }} /> Edit
+                          </button>
+                          <button type="button" className="action-button ghost small" style={{ color: "#ef4444" }} onClick={() => onDeleteThread(thread.id)} disabled={processingId === `thread:${thread.id}`}>
+                            <FiTrash2 style={{ marginRight: "4px" }} /> Delete
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))
               ) : (
-                <p>No threads created yet.</p>
+                <p className="settings-input-helper">No community threads created yet.</p>
               )}
-            </>
+            </div>
           ) : null}
 
           {manageView === "replies" ? (
-            <>
-              <h2>Manage Replies</h2>
+            <div>
               {managedReplies.length ? (
-                <ul>
-                  {managedReplies.slice(0, 40).map((reply) => (
-                    <li key={reply.id}>
-                      <strong>{reply.authorName}</strong> on{" "}
-                      <em>{reply.threadTitle}</em>
-                      <p>{reply.body}</p>
-                      {editingReplyId === reply.id ? (
-                        <div className="dashboard-manage-form">
-                          <textarea
-                            rows={3}
-                            value={editingReplyBody}
-                            onChange={(event) =>
-                              setEditingReplyBody(event.target.value)
-                            }
-                          />
-                          <div className="inline-actions">
-                            <button
-                              type="button"
-                              className="action-button"
-                              onClick={() =>
-                                onSaveReplyEdit(reply.threadId, reply.id)
-                              }
-                              disabled={
-                                processingId === `reply-edit:${reply.id}`
-                              }
-                            >
-                              Save Reply
-                            </button>
-                            <button
-                              type="button"
-                              className="action-button ghost"
-                              onClick={() => {
-                                setEditingReplyId("");
-                                setEditingReplyBody("");
-                              }}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
+                managedReplies.slice(0, 40).map((reply) => (
+                  <div key={reply.id} className="session-item-row" style={{ flexDirection: "column", alignItems: "stretch", gap: "0.75rem", marginBottom: "1rem" }}>
+                    <div>
+                      <strong style={{ color: "var(--text)" }}>{reply.authorName}</strong> on <em>{reply.threadTitle}</em>
+                      <p className="settings-input-helper" style={{ marginTop: "0.25rem" }}>{reply.body}</p>
+                    </div>
+
+                    {editingReplyId === reply.id ? (
+                      <div className="settings-form-grid">
+                        <textarea
+                          className="settings-textarea"
+                          rows={3}
+                          value={editingReplyBody}
+                          onChange={(e) => setEditingReplyBody(e.target.value)}
+                        />
                         <div className="inline-actions">
-                          <Link
-                            href={threadHref(
-                              reply.threadId,
-                              reply.threadSlug,
-                              reply.communitySlug,
-                            )}
-                            className="action-button ghost small"
-                          >
-                            Open Thread
-                          </Link>
-                          <button
-                            type="button"
-                            className="action-button ghost small"
-                            onClick={() => {
-                              setEditingReplyId(reply.id);
-                              setEditingReplyBody(reply.body);
-                            }}
-                          >
-                            Edit Reply
+                          <button type="button" className="action-button small" onClick={() => onSaveReplyEdit(reply.threadId, reply.id)} disabled={processingId === `reply-edit:${reply.id}`}>
+                            Save Reply
                           </button>
-                          <button
-                            type="button"
-                            className="action-button ghost small"
-                            onClick={() =>
-                              onDeleteReply(reply.threadId, reply.id)
-                            }
-                            disabled={processingId === `reply:${reply.id}`}
-                          >
-                            Delete Reply
+                          <button type="button" className="action-button ghost small" onClick={() => setEditingReplyId("")}>
+                            Cancel
                           </button>
                         </div>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+                      </div>
+                    ) : (
+                      <div className="inline-actions">
+                        <Link href={threadHref(reply.threadId, reply.threadSlug, reply.communitySlug)} className="action-button ghost small">
+                          <FiExternalLink style={{ marginRight: "4px" }} /> Open Thread
+                        </Link>
+                        <button type="button" className="action-button ghost small" onClick={() => { setEditingReplyId(reply.id); setEditingReplyBody(reply.body); }}>
+                          <FiEdit3 style={{ marginRight: "4px" }} /> Edit
+                        </button>
+                        <button type="button" className="action-button ghost small" style={{ color: "#ef4444" }} onClick={() => onDeleteReply(reply.threadId, reply.id)} disabled={processingId === `reply:${reply.id}`}>
+                          <FiTrash2 style={{ marginRight: "4px" }} /> Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))
               ) : (
-                <p>No replies on your threads yet.</p>
+                <p className="settings-input-helper">No replies on your threads yet.</p>
               )}
-            </>
+            </div>
           ) : null}
 
           {manageView === "wiki" ? (
-            <>
-              <h2>Manage Wiki Entries</h2>
+            <div>
               {wiki.length ? (
-                <ul>
-                  {wiki.map((entry) => (
-                    <li key={entry.id}>
-                      <strong>{entry.title}</strong> ({entry.status})
-                      <p>
-                        Updated {new Date(entry.updatedAt).toLocaleString()}
-                      </p>
-                      <div className="inline-actions">
-                        <Link
-                          href={`/wiki/${entry.id}`}
-                          className="action-button ghost small"
-                        >
-                          View
-                        </Link>
-                        <Link
-                          href={`/wiki/${entry.id}/edit`}
-                          className="action-button ghost small"
-                        >
-                          Edit
-                        </Link>
-                        <button
-                          type="button"
-                          className="action-button ghost small"
-                          onClick={() => onDeleteWiki(entry.id)}
-                          disabled={processingId === `wiki:${entry.id}`}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                wiki.map((entry) => (
+                  <div key={entry.id} className="session-item-row" style={{ marginBottom: "1rem" }}>
+                    <div>
+                      <strong style={{ color: "var(--text)" }}>{entry.title}</strong>
+                      <p className="settings-input-helper">Status: {entry.status} · Updated {new Date(entry.updatedAt).toLocaleDateString()}</p>
+                    </div>
+                    <div className="inline-actions">
+                      <Link href={`/wiki/${entry.id}`} className="action-button ghost small">
+                        <FiExternalLink style={{ marginRight: "4px" }} /> View
+                      </Link>
+                      <Link href={`/wiki/${entry.id}/edit`} className="action-button ghost small">
+                        <FiEdit3 style={{ marginRight: "4px" }} /> Edit
+                      </Link>
+                      <button type="button" className="action-button ghost small" style={{ color: "#ef4444" }} onClick={() => onDeleteWiki(entry.id)} disabled={processingId === `wiki:${entry.id}`}>
+                        <FiTrash2 style={{ marginRight: "4px" }} /> Delete
+                      </button>
+                    </div>
+                  </div>
+                ))
               ) : (
-                <p>No wiki entries yet.</p>
+                <p className="settings-input-helper">No wiki articles created yet.</p>
               )}
-            </>
+            </div>
           ) : null}
         </section>
       );
     }
 
+    // ----------------------------------------------------
+    // TAB 5: WATCHLIST
+    // ----------------------------------------------------
     if (panel === "watchlist") {
       return (
-        <section className="section-block dashboard-card list-panel">
-          <h2>Watchlist</h2>
+        <section className="section-block dashboard-card">
+          <div className="settings-header-block">
+            <div className="settings-header-info">
+              <h2>My Watchlist Collections</h2>
+              <p>Your saved anime series and show bookmarks.</p>
+            </div>
+            <span className="auth-badge">
+              <FiBookmark style={{ marginRight: "4px" }} /> {watchlist.length} Saved Shows
+            </span>
+          </div>
+
           {watchlist.length ? (
-            <ul>
+            <div className="security-grid">
               {watchlist.map((item) => (
-                <li key={item.animeId}>{item.title}</li>
+                <div key={item.animeId} className="session-item-row" style={{ justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <FiBookmark style={{ color: "var(--brand)" }} />
+                    <strong style={{ fontSize: "0.9rem", color: "var(--text)" }}>{item.title}</strong>
+                  </div>
+                  <button
+                    type="button"
+                    className="action-button ghost small"
+                    style={{ color: "#ef4444" }}
+                    onClick={() => removeFromWatchlist(item.animeId)}
+                    disabled={processingId === `watchlist:${item.animeId}`}
+                  >
+                    <FiTrash2 />
+                  </button>
+                </div>
               ))}
-            </ul>
+            </div>
           ) : (
-            <p>No watchlist items yet.</p>
+            <p className="settings-input-helper">No shows added to your watchlist yet.</p>
           )}
         </section>
       );
     }
 
+    // ----------------------------------------------------
+    // TAB 6: IDENTITY CONNECTIONS & FOOTPRINT
+    // ----------------------------------------------------
     return (
-      <section className="section-block dashboard-card list-panel text-white">
-        <h2>Identity Connections</h2>
-        <p className="meta-line mb-6">
-          Link multiple social logins to sign in to the same account securely.
-        </p>
-        <div className="connections-provider-list space-y-4 mb-8">
+      <section className="section-block dashboard-card">
+        <div className="settings-header-block">
+          <div className="settings-header-info">
+            <h2>Identity Connections & Footprint</h2>
+            <p>Link multiple social accounts and review your community footprint badges.</p>
+          </div>
+          <span className="auth-badge">
+            <FiGlobe style={{ marginRight: "4px" }} /> Identity Gateway
+          </span>
+        </div>
+
+        <div className="connection-provider-list">
           {[
-            { id: "google", name: "Google", icon: "💎" },
-            { id: "discord", name: "Discord", icon: "🎮" },
-            { id: "facebook", name: "Facebook", icon: "👥" },
-            { id: "github", name: "GitHub", icon: "💻" },
+            { id: "google", name: "Google Account", icon: FaGoogle, color: "#ea4335" },
+            { id: "discord", name: "Discord Profile", icon: FaDiscord, color: "#5865f2" },
+            { id: "facebook", name: "Facebook Login", icon: FaFacebook, color: "#1877f2" },
+            { id: "github", name: "GitHub Developer", icon: FaGithub, color: "#ffffff" },
           ].map((p) => {
+            const ProviderIcon = p.icon;
             const isLinked = identities.some((id) => id.provider === p.id);
             return (
-              <div
-                key={p.id}
-                className="flex items-center justify-between p-4 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)]"
-              >
-                <div className="flex items-center space-x-3">
-                  <span className="text-xl">{p.icon}</span>
-                  <span className="font-semibold text-sm">{p.name}</span>
+              <div key={p.id} className="connection-item-card">
+                <div className="connection-item-left">
+                  <ProviderIcon style={{ color: p.color, fontSize: "1.4rem" }} />
+                  <span className="connection-item-name">{p.name}</span>
                 </div>
                 <div>
                   {isLinked ? (
-                    <span className="px-3 py-1 text-xs font-bold text-green-400 bg-green-500/10 rounded-full border border-green-500/20">
-                      ✓ Connected
+                    <span className="auth-badge" style={{ color: "#10b981", borderColor: "rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.1)" }}>
+                      <FiCheckCircle style={{ marginRight: "4px" }} /> Connected
                     </span>
                   ) : (
                     <button
                       type="button"
                       onClick={() => handleLinkIdentity(p.id)}
-                      className="px-4 py-1.5 text-xs font-bold rounded-xl text-white bg-[var(--brand)] hover:bg-[var(--brand-strong)] transition-all"
+                      className="action-button small"
                     >
                       Connect
                     </button>
@@ -956,47 +1014,77 @@ export default function DashboardPage() {
           })}
         </div>
 
-        <h2>Community Footprint</h2>
-        <h3>Communities</h3>
+        <h3 className="dashboard-subheading">Community Footprint</h3>
         {joinedCommunities.length ? (
-          <ul>
+          <div>
             {joinedCommunities.slice(0, 10).map((community) => (
-              <li key={community.id}>
-                <Link href={`/community/${community.slug}`}>
-                  {community.name}
-                </Link>{" "}
-                · {community.memberCount} members
-              </li>
+              <Link
+                key={community.id}
+                href={`/community/${community.slug}`}
+                className="community-item-card"
+              >
+                <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <FiUsers style={{ color: "var(--brand)" }} /> {community.name}
+                </span>
+                <span className="settings-input-helper">{community.memberCount} members</span>
+              </Link>
             ))}
-          </ul>
+          </div>
         ) : (
-          <p>You have not joined a community yet.</p>
+          <p className="settings-input-helper">You have not joined a community yet.</p>
         )}
-        <h3 className="mt-6">Badges and Recognition</h3>
-        <div className="pill-list">
+
+        <h3 className="dashboard-subheading">Badges and Recognition</h3>
+        <div className="badge-pill-list">
           {(stats?.badges || []).length ? (
             (stats?.badges || []).map((badge) => (
-              <span className="badge-pill" key={badge}>
-                {badge}
+              <span className="badge-pill-item" key={badge}>
+                <FiAward style={{ marginRight: "4px" }} /> {badge}
               </span>
             ))
           ) : (
-            <span className="meta-line">No badges yet.</span>
+            <p className="settings-input-helper">No badges earned yet.</p>
           )}
         </div>
-        <h3 className="mt-6">Core Counters</h3>
-        <ul>
-          <li>Threads created: {stats?.threadCount || 0}</li>
-          <li>Comments posted: {stats?.commentCount || 0}</li>
-          <li>Wiki contributions: {stats?.wikiCount || 0}</li>
-          <li>Saved threads: {savedThreads.length}</li>
-        </ul>
-        <div className="inline-actions">
+
+        <h3 className="dashboard-subheading">Core Activity Counters</h3>
+        <div className="security-grid">
+          <article className="security-kpi">
+            <span>Threads Created</span>
+            <strong style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <FiMessageSquare style={{ color: "var(--brand)" }} />
+              {stats?.threadCount || 0}
+            </strong>
+          </article>
+          <article className="security-kpi">
+            <span>Comments Posted</span>
+            <strong style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <FiEdit3 style={{ color: "var(--brand)" }} />
+              {stats?.commentCount || 0}
+            </strong>
+          </article>
+          <article className="security-kpi">
+            <span>Wiki Edits</span>
+            <strong style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <FiLayers style={{ color: "var(--brand)" }} />
+              {stats?.wikiCount || 0}
+            </strong>
+          </article>
+          <article className="security-kpi">
+            <span>Saved Threads</span>
+            <strong style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <FiBookmark style={{ color: "var(--brand)" }} />
+              {savedThreads.length}
+            </strong>
+          </article>
+        </div>
+
+        <div className="inline-actions" style={{ marginTop: "1rem" }}>
           <Link href="/community" className="action-button">
-            Explore Communities
+            <FiUsers style={{ marginRight: "6px" }} /> Explore Communities
           </Link>
           <Link href="/settings" className="action-button ghost">
-            Settings
+            <FiUser style={{ marginRight: "6px" }} /> Account Settings
           </Link>
         </div>
       </section>
@@ -1004,229 +1092,159 @@ export default function DashboardPage() {
   };
 
   return (
-    <main className="feature-page">
-      <section className="section-header">
-        <h1>Dashboard</h1>
-        <p>
-          Welcome back, {user?.username || "Member"}. Manage security,
-          governance, activity, and account controls from one enterprise
-          workspace.
-        </p>
+    <main className="feature-page relative overflow-hidden">
+      <div className="bg-glow-1"></div>
+      <div className="bg-glow-2"></div>
+
+      <section className="workspace-hero-banner relative z-10">
+        <div className="hero-banner-content">
+          <div className="auth-badge">
+            <span>⚡ Member Workspace</span>
+          </div>
+          <h1 className="hero-banner-title">
+            Welcome back, <span style={{ color: "var(--brand)" }}>{user?.username || "Member"}</span>
+          </h1>
+          <p className="hero-banner-desc">
+            Manage security, governance, community activity, and account controls from your unified workspace.
+          </p>
+        </div>
+        <div className="hero-banner-mascot-wrapper">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/peeking_ai_robot.png"
+            alt="Aniverse AI Assistant"
+            className="hero-banner-mascot-img"
+          />
+        </div>
       </section>
 
-      <section className="workspace-layout">
+      <section className="workspace-layout relative z-10">
         <aside className="workspace-sidebar section-block">
-          <h3>Sections</h3>
+          <h3>Workspace Sections</h3>
           <button
             type="button"
-            className={
-              panel === "command" ? "workspace-link active" : "workspace-link"
-            }
+            className={panel === "command" ? "workspace-link active" : "workspace-link"}
             onClick={() => setPanel("command")}
           >
-            Command Center
+            <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <FiCpu /> Command Center
+            </span>
           </button>
           <button
             type="button"
-            className={
-              panel === "security" ? "workspace-link active" : "workspace-link"
-            }
+            className={panel === "security" ? "workspace-link active" : "workspace-link"}
             onClick={() => setPanel("security")}
           >
-            Security
+            <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <FiShield /> Security
+            </span>
           </button>
           <button
             type="button"
-            className={
-              panel === "activity" ? "workspace-link active" : "workspace-link"
-            }
+            className={panel === "activity" ? "workspace-link active" : "workspace-link"}
             aria-expanded={activityExpanded}
             onClick={() => {
               setPanel("activity");
               setActivityExpanded((prev) => !prev);
             }}
           >
-            <span>Activity Feed</span>
+            <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <FiActivity /> Activity Feed
+            </span>
             <span className="workspace-chevron" aria-hidden="true">
-              {activityExpanded ? "▾" : "▸"}
+              {activityExpanded ? <FiChevronDown /> : <FiChevronRight />}
             </span>
           </button>
+
           {activityExpanded ? (
             <div className="workspace-nested-links">
-              <button
-                type="button"
-                className={
-                  panel === "activity" && activityView === "all"
-                    ? "workspace-link workspace-link-nested active"
-                    : "workspace-link workspace-link-nested"
-                }
-                onClick={() => {
-                  setPanel("activity");
-                  setActivityView("all");
-                }}
-              >
-                All Activity
-              </button>
-              <button
-                type="button"
-                className={
-                  panel === "activity" && activityView === "threads"
-                    ? "workspace-link workspace-link-nested active"
-                    : "workspace-link workspace-link-nested"
-                }
-                onClick={() => {
-                  setPanel("activity");
-                  setActivityView("threads");
-                }}
-              >
-                Threads
-              </button>
-              <button
-                type="button"
-                className={
-                  panel === "activity" && activityView === "replies"
-                    ? "workspace-link workspace-link-nested active"
-                    : "workspace-link workspace-link-nested"
-                }
-                onClick={() => {
-                  setPanel("activity");
-                  setActivityView("replies");
-                }}
-              >
-                Replies
-              </button>
-              <button
-                type="button"
-                className={
-                  panel === "activity" && activityView === "comments"
-                    ? "workspace-link workspace-link-nested active"
-                    : "workspace-link workspace-link-nested"
-                }
-                onClick={() => {
-                  setPanel("activity");
-                  setActivityView("comments");
-                }}
-              >
-                My Comments
-              </button>
-              <button
-                type="button"
-                className={
-                  panel === "activity" && activityView === "wiki"
-                    ? "workspace-link workspace-link-nested active"
-                    : "workspace-link workspace-link-nested"
-                }
-                onClick={() => {
-                  setPanel("activity");
-                  setActivityView("wiki");
-                }}
-              >
-                Wiki
-              </button>
-              <button
-                type="button"
-                className={
-                  panel === "activity" && activityView === "saved"
-                    ? "workspace-link workspace-link-nested active"
-                    : "workspace-link workspace-link-nested"
-                }
-                onClick={() => {
-                  setPanel("activity");
-                  setActivityView("saved");
-                }}
-              >
-                Saved Threads
-              </button>
+              {(["all", "threads", "replies", "comments", "wiki", "saved"] as const).map((view) => (
+                <button
+                  key={view}
+                  type="button"
+                  className={
+                    panel === "activity" && activityView === view
+                      ? "workspace-link workspace-link-nested active"
+                      : "workspace-link workspace-link-nested"
+                  }
+                  onClick={() => {
+                    setPanel("activity");
+                    setActivityView(view);
+                  }}
+                  style={{ textTransform: "capitalize" }}
+                >
+                  {view}
+                </button>
+              ))}
             </div>
           ) : null}
+
           <button
             type="button"
-            className={
-              panel === "manage" ? "workspace-link active" : "workspace-link"
-            }
+            className={panel === "manage" ? "workspace-link active" : "workspace-link"}
             aria-expanded={manageExpanded}
             onClick={() => {
               setPanel("manage");
               setManageExpanded((prev) => !prev);
             }}
           >
-            <span>Manage Content</span>
+            <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <FiLayers /> Manage Content
+            </span>
             <span className="workspace-chevron" aria-hidden="true">
-              {manageExpanded ? "▾" : "▸"}
+              {manageExpanded ? <FiChevronDown /> : <FiChevronRight />}
             </span>
           </button>
+
           {manageExpanded ? (
             <div className="workspace-nested-links">
-              <button
-                type="button"
-                className={
-                  panel === "manage" && manageView === "threads"
-                    ? "workspace-link workspace-link-nested active"
-                    : "workspace-link workspace-link-nested"
-                }
-                onClick={() => {
-                  setPanel("manage");
-                  setManageView("threads");
-                }}
-              >
-                Threads
-              </button>
-              <button
-                type="button"
-                className={
-                  panel === "manage" && manageView === "replies"
-                    ? "workspace-link workspace-link-nested active"
-                    : "workspace-link workspace-link-nested"
-                }
-                onClick={() => {
-                  setPanel("manage");
-                  setManageView("replies");
-                }}
-              >
-                Replies
-              </button>
-              <button
-                type="button"
-                className={
-                  panel === "manage" && manageView === "wiki"
-                    ? "workspace-link workspace-link-nested active"
-                    : "workspace-link workspace-link-nested"
-                }
-                onClick={() => {
-                  setPanel("manage");
-                  setManageView("wiki");
-                }}
-              >
-                Wiki Entries
-              </button>
+              {(["threads", "replies", "wiki"] as const).map((view) => (
+                <button
+                  key={view}
+                  type="button"
+                  className={
+                    panel === "manage" && manageView === view
+                      ? "workspace-link workspace-link-nested active"
+                      : "workspace-link workspace-link-nested"
+                  }
+                  onClick={() => {
+                    setPanel("manage");
+                    setManageView(view);
+                  }}
+                  style={{ textTransform: "capitalize" }}
+                >
+                  {view}
+                </button>
+              ))}
             </div>
           ) : null}
+
           <button
             type="button"
-            className={
-              panel === "watchlist" ? "workspace-link active" : "workspace-link"
-            }
+            className={panel === "watchlist" ? "workspace-link active" : "workspace-link"}
             onClick={() => setPanel("watchlist")}
           >
-            Watchlist
+            <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <FiBookmark /> Watchlist
+            </span>
           </button>
+
           <button
             type="button"
-            className={
-              panel === "connections"
-                ? "workspace-link active"
-                : "workspace-link"
-            }
+            className={panel === "connections" ? "workspace-link active" : "workspace-link"}
             onClick={() => setPanel("connections")}
           >
-            Connections
+            <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <FiGlobe /> Connections
+            </span>
           </button>
         </aside>
 
-        <div className="workspace-content">{renderPanel()}</div>
+        <div className="workspace-content">
+          {error ? <div className="alert-error" style={{ marginBottom: "1rem" }}>✕ {error}</div> : null}
+          {renderPanel()}
+        </div>
       </section>
-
-      {error ? <p className="error-text">{error}</p> : null}
     </main>
   );
 }

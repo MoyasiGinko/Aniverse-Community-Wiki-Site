@@ -59,6 +59,13 @@ export function useProtectedAuth(
     let cancelled = false;
 
     const ensureAuthenticated = async () => {
+      if (user) {
+        setAccessBlocked(false);
+        applyRoleState(user as AuthUser);
+        setChecking(false);
+        return;
+      }
+
       if (loading || refreshing) {
         return;
       }
@@ -128,7 +135,7 @@ export function useProtectedAuth(
 
   return {
     user: (user as AuthUser | null) || null,
-    checking: loading || refreshing || checking,
+    checking: !user && (loading || checking),
     accessBlocked,
     forbidden,
     requestSignIn,

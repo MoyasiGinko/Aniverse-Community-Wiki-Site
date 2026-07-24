@@ -1,18 +1,17 @@
-// @ts-nocheck
 "use client";
 
-import { Provider } from "react-redux";
-import store from "./redux/store";
+import type { ReactNode } from "react";
 import { AuthProvider } from "./context/AuthContext";
 import SignInModal from "./components/SignInModal";
+import QueryProvider from "./providers/QueryProvider";
 
-export default function Providers({ children }) {
+export default function Providers({ children }: { children: ReactNode }) {
   return (
-    <Provider store={store}>
+    <QueryProvider>
       <AuthProvider>
         {children}
         <SignInModal />
       </AuthProvider>
-    </Provider>
+    </QueryProvider>
   );
 }

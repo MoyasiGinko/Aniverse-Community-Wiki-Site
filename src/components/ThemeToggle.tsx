@@ -1,29 +1,31 @@
-// @ts-nocheck
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect } from "react";
+import { FiSun, FiMoon } from "react-icons/fi";
+import { useUiStore } from "../stores/useUiStore";
 
 const ThemeToggle = () => {
-  const [theme, setTheme] = useState('light');
+  const { theme, toggleTheme } = useUiStore();
 
   useEffect(() => {
-    const saved = localStorage.getItem('aniverse_theme') || 'light';
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setTheme(saved);
-    document.body.dataset.theme = saved;
-  }, []);
-
-  const onToggle = () => {
-    const next = theme === 'light' ? 'dark' : 'light';
-    setTheme(next);
-    localStorage.setItem('aniverse_theme', next);
-    document.body.dataset.theme = next;
-  };
+    if (typeof document !== "undefined") {
+      document.body.dataset.theme = theme;
+    }
+  }, [theme]);
 
   return (
-    <button type="button" className="theme-toggle" onClick={onToggle} aria-label="Toggle theme">
-      <span>{theme === 'light' ? 'Dark' : 'Light'}</span>
-      <small>mode</small>
+    <button
+      type="button"
+      className="theme-toggle"
+      onClick={toggleTheme}
+      aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
+      title={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
+    >
+      {theme === "light" ? (
+        <FiMoon style={{ fontSize: "1.1rem", color: "var(--brand)" }} />
+      ) : (
+        <FiSun style={{ fontSize: "1.1rem", color: "#f59e0b" }} />
+      )}
     </button>
   );
 };

@@ -12,6 +12,7 @@ import {
 } from "react";
 import { ApiError, apiRequest } from "../lib/apiClient";
 import { createClient } from "../lib/supabaseClient";
+import { useAuthStore } from "../stores/useAuthStore";
 
 export type AuthUser = {
   id: string;
@@ -55,10 +56,20 @@ const AUTH_EVENT_KEY = "aniverse:auth:event";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const supabaseClient = useMemo(() => createClient(), []);
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUserState] = useState<AuthUser | null>(() => {
+    if (typeof window !== "undefined") {
+      return useAuthStore.getState().user;
+    }
+    return null;
+  });
+  const [loading, setLoading] = useState(() => !useAuthStore.getState().user);
   const [refreshing, setRefreshing] = useState(false);
   const [signInPromptOpen, setSignInPromptOpen] = useState(false);
+
+  const setUser = useCallback((nextUser: AuthUser | null) => {
+    setUserState(nextUser);
+    useAuthStore.getState().setUser(nextUser);
+  }, []);
 
   const userRef = useRef<AuthUser | null>(null);
   const channelRef = useRef<BroadcastChannel | null>(null);

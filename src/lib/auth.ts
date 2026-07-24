@@ -84,14 +84,83 @@ export async function getSessionUser(): Promise<UserRecord | null> {
       return null;
     }
 
-    const { data: userRow, error } = await supabase
+    let { data: userRow, error } = await supabase
       .from("app_users")
       .select("*")
       .eq("id", authUser.id)
       .maybeSingle();
 
-    if (error || !userRow) {
-      return null;
+    if (!userRow) {
+      const rawMeta = authUser.user_metadata || {};
+      const rawAppMeta = authUser.app_metadata || {};
+      let username =
+        rawMeta.username ||
+        rawMeta.full_name ||
+        rawMeta.name ||
+        authUser.email?.split("@")[0] ||
+        "user";
+      username = username.replace(/[^a-zA-Z0-9_.-]/g, "").slice(0, 24);
+      if (username.length < 3) {
+        username = `${username}_user`;
+      }
+      let provider = rawAppMeta.provider || "google";
+      if (provider === "email") {
+        provider = "local";
+      }
+      const avatarUrl = rawMeta.avatar_url || rawMeta.picture || "";
+
+      const newUserRow = {
+        id: authUser.id,
+        email: authUser.email || "",
+        username,
+        password_hash: "",
+        provider,
+        role: "user",
+        bio: "",
+        avatar_url: avatarUrl,
+        joined_at: authUser.created_at || new Date().toISOString(),
+      };
+
+      const { data: inserted, error: insertError } = await supabase
+        .from("app_users")
+        .upsert(newUserRow)
+        .select()
+        .single();
+
+      if (!insertError && inserted) {
+        userRow = inserted;
+      }
+    }
+
+    if (!userRow) {
+      const rawMeta = authUser.user_metadata || {};
+      const rawAppMeta = authUser.app_metadata || {};
+      let username =
+        rawMeta.username ||
+        rawMeta.full_name ||
+        rawMeta.name ||
+        authUser.email?.split("@")[0] ||
+        "user";
+      username = username.replace(/[^a-zA-Z0-9_.-]/g, "").slice(0, 24);
+      if (username.length < 3) {
+        username = `${username}_user`;
+      }
+      let provider = rawAppMeta.provider || "google";
+      if (provider === "email") {
+        provider = "local";
+      }
+
+      return {
+        id: authUser.id,
+        email: authUser.email || "",
+        username,
+        passwordHash: "",
+        provider: provider as any,
+        role: "user",
+        bio: "",
+        avatarUrl: rawMeta.avatar_url || rawMeta.picture || "",
+        joinedAt: authUser.created_at || new Date().toISOString(),
+      };
     }
 
     return {
