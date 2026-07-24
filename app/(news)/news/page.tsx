@@ -22,11 +22,13 @@ import {
   FiX,
   FiFilter,
   FiGlobe,
+  FiCpu,
+  FiZap,
 } from "react-icons/fi";
 import { FaGamepad } from "react-icons/fa";
 import "@/src/styles/auth.css";
 
-type CategoryType = "Animes" | "Games" | "Movies & Series" | "Musics" | "Manga & Books";
+type CategoryType = "Animes" | "Games" | "Movies & Series" | "Musics" | "Manga & Books" | "Tech & Culture";
 
 type NewsArticle = {
   id: string;
@@ -44,15 +46,17 @@ type NewsArticle = {
   commentsCount: number;
   viewsCount: number;
   likesCount: number;
+  isHotTrend?: boolean;
 };
 
 // Dynamic Sub-Categories for each main media category
 const SUB_CATEGORIES_MAP: Record<CategoryType, string[]> = {
   Animes: ["All Animes", "Seasonal Airing", "Movies & OVAs", "Studio Production", "Voice Cast"],
-  Games: ["All Games", "RPG & Gacha", "Action & Fighting", "Console & PC", "Esports"],
+  Games: ["All Games & Sports", "Real Sports & Athletics", "Esports & Tournaments", "RPG & Gacha", "Console & PC"],
   "Movies & Series": ["All Movies", "Live Action Adaptations", "Hollywood & International", "Streaming Releases"],
-  Musics: ["All Musics", "Anime OSTs", "J-Pop & Vocaloid", "Concerts & Tours"],
+  Musics: ["All Musics", "Billboard Hot 100", "Global Top Charts", "J-Pop & K-Pop", "Anime OSTs"],
   "Manga & Books": ["All Manga", "Shonen & Seinen", "Light Novels", "Webtoons & Comics"],
+  "Tech & Culture": ["All Tech & Culture", "AI & Sci-Fi Tech", "Cosplay & Conventions", "Gaming Hardware", "Virtual Creators"],
 };
 
 const CATEGORY_FALLBACK_IMAGES: Record<CategoryType, string> = {
@@ -61,6 +65,7 @@ const CATEGORY_FALLBACK_IMAGES: Record<CategoryType, string> = {
   "Movies & Series": "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=800&auto=format&fit=crop",
   Musics: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=800&auto=format&fit=crop",
   "Manga & Books": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800&auto=format&fit=crop",
+  "Tech & Culture": "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800&auto=format&fit=crop",
 };
 
 // Initial Seed Articles across all categories and sub-categories
@@ -203,6 +208,46 @@ The expansion includes remixed battle themes by Atsushi Kitajoh, synthesized Per
     viewsCount: 2150,
     likesCount: 490,
   },
+  {
+    id: "news-game-sports-1",
+    title: "UEFA Champions League Final: Dramatic Extra-Time Stoppage Victory",
+    excerpt: "Europe's premier football club tournament concludes with breathtaking 94th-minute winning goal in Munich.",
+    fullBody: `The UEFA Champions League final delivered an iconic sporting climax as the trailing side mounted a heroic 94th-minute comeback victory at the Allianz Arena. 
+
+Over 75,000 spectators and a global television audience of 400 million watched the historic match unfold as tactical adjustments and relentless pressing secured the European trophy.`,
+    category: "Games",
+    subCategory: "Real Sports & Athletics",
+    source: "UEFA Official / Global Sports Desk",
+    date: "2026-07-24",
+    readTime: "4 min read",
+    imageUrl: "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=800&auto=format&fit=crop",
+    externalUrl: "https://www.uefa.com/championsleague/",
+    author: "Julian Draxler",
+    commentsCount: 412,
+    viewsCount: 12450,
+    likesCount: 3100,
+    isHotTrend: true,
+  },
+  {
+    id: "news-game-sports-2",
+    title: "Formula 1 Grand Prix: Monza High-Speed Thriller & Championship Points Lead",
+    excerpt: "Wheel-to-wheel overtaking maneuver at 350 km/h decides victory at the Temple of Speed.",
+    fullBody: `The Italian Grand Prix at Monza produced one of the fastest and most dramatic races of the season. 
+
+A hair-raising late-race safety car restart triggered a three-way battle into the Turn 1 chicane, culminating in a daring outer-line overtake that extended the championship points lead.`,
+    category: "Games",
+    subCategory: "Real Sports & Athletics",
+    source: "Formula 1 Global Wire",
+    date: "2026-07-23",
+    readTime: "3 min read",
+    imageUrl: "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?q=80&w=800&auto=format&fit=crop",
+    externalUrl: "https://www.formula1.com",
+    author: "Sebastian Cole",
+    commentsCount: 298,
+    viewsCount: 9810,
+    likesCount: 2410,
+    isHotTrend: true,
+  },
 
   // MOVIES & SERIES
   {
@@ -246,6 +291,26 @@ Produced on a modest budget, the film captured global critical acclaim for its g
 
   // MUSICS
   {
+    id: "news-music-billboard-1",
+    title: "Billboard Hot 100: Global Pop Smash Single Shatters Weekly Streaming Record",
+    excerpt: "The worldwide chart-topping track surpasses 100 million streams in its debut week across global platforms.",
+    fullBody: `Billboard Hot 100 officials have confirmed that the latest global pop collaboration single has broken the all-time weekly streaming record, claiming the #1 spot on Billboard charts in 34 countries.
+
+Radio programmers and streaming executives attribute the record-breaking debut to massive viral social media trends and unprecedented global physical vinyl pre-orders.`,
+    category: "Musics",
+    subCategory: "Billboard Hot 100",
+    source: "Billboard Hot 100 Official",
+    date: "2026-07-24",
+    readTime: "3 min read",
+    imageUrl: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=800&auto=format&fit=crop",
+    externalUrl: "https://www.billboard.com/charts/hot-100/",
+    author: "Camila Fernandez",
+    commentsCount: 540,
+    viewsCount: 14200,
+    likesCount: 3890,
+    isHotTrend: true,
+  },
+  {
     id: "news-music-1",
     title: "YOASOBI Announces 2026 World Tour & New Anime Opening Theme Single",
     excerpt: "J-pop duo YOASOBI announces international arena concert dates across Asia, Europe, and North America.",
@@ -253,7 +318,7 @@ Produced on a modest budget, the film captured global critical acclaim for its g
 
 Alongside the tour announcement, the duo revealed a brand-new single titled 'Idol's Echo', which will serve as the main theme song for an upcoming flagship anime series this fall.`,
     category: "Musics",
-    subCategory: "J-Pop & Vocaloid",
+    subCategory: "J-Pop & K-Pop",
     source: "Sony Music Japan",
     date: "2026-07-24",
     readTime: "2 min read",
@@ -323,6 +388,46 @@ The story continues Guts' journey following the destruction of Elfhelm, strictly
     viewsCount: 7120,
     likesCount: 1890,
   },
+
+  // TECH & CULTURE
+  {
+    id: "news-tech-1",
+    title: "AI Video Animation Revolution: Next-Gen Neural Pipelines in Anime Studios",
+    excerpt: "Tokyo animation studios adopt AI-assisted in-betweening pipelines to accelerate high-frame-rate battle sequences.",
+    fullBody: `Major Japanese animation houses are officially testing generative neural pipelines to assist animators with complex in-between keyframes. 
+
+Producers emphasize that core keyframing and artistic direction remain 100% human-crafted, while AI models drastically reduce crunch time on repetitive line-inbetweening and background render passes.`,
+    category: "Tech & Culture",
+    subCategory: "AI & Sci-Fi Tech",
+    source: "Nikkei Tech Japan / Aniverse AI",
+    date: "2026-07-24",
+    readTime: "4 min read",
+    imageUrl: "https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800&auto=format&fit=crop",
+    externalUrl: "https://nikkei.com",
+    author: "Dr. Kenji Ogawa",
+    commentsCount: 310,
+    viewsCount: 9540,
+    likesCount: 2410,
+    isHotTrend: true,
+  },
+  {
+    id: "news-tech-2",
+    title: "Next-Gen Handheld Gaming PC Revolution: OLED & Neural Upscaling Hardware",
+    excerpt: "New portable gaming devices feature hardware AI frame generation and custom ARM chips.",
+    fullBody: `The handheld gaming PC ecosystem has reached a major milestone as manufacturers unveil new ultra-efficient handhelds capable of running AAA titles at 1080p 120Hz with AI frame generation.`,
+    category: "Tech & Culture",
+    subCategory: "Gaming Hardware",
+    source: "TechRadar Global",
+    date: "2026-07-22",
+    readTime: "3 min read",
+    imageUrl: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=800&auto=format&fit=crop",
+    externalUrl: "https://techradar.com",
+    author: "Marcus Vance",
+    commentsCount: 184,
+    viewsCount: 6420,
+    likesCount: 1520,
+    isHotTrend: true,
+  },
 ];
 
 export default function NewsHomepage() {
@@ -363,6 +468,8 @@ export default function NewsHomepage() {
           kitsuAnimeRes,
           openLibraryRes,
           anilistRes,
+          billboardRes,
+          sportsRes,
         ] = await Promise.allSettled([
           fetch("https://api.jikan.moe/v4/top/anime?limit=18"),
           fetch("https://api.jikan.moe/v4/top/manga?limit=18"),
@@ -372,6 +479,8 @@ export default function NewsHomepage() {
           fetch("https://www.freetogame.com/api/games"),
           fetch("https://kitsu.io/api/edge/trending/anime"),
           fetch("https://openlibrary.org/subjects/fantasy.json?limit=15"),
+          fetch("https://itunes.apple.com/us/rss/topsongs/limit=25/json"),
+          fetch("https://www.thesportsdb.com/api/v1/json/3/all_sports.php"),
           fetch("https://graphql.anilist.co", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -660,6 +769,61 @@ export default function NewsHomepage() {
           }
         }
 
+        // Parse Billboard Hot 100 Singles API
+        if (billboardRes.status === "fulfilled" && billboardRes.value.ok) {
+          const billboardData = await billboardRes.value.json();
+          const entries = billboardData?.feed?.entry || [];
+          entries.forEach((song: any, idx: number) => {
+            const title = song["im:name"]?.label || "Billboard Hit Single";
+            const artist = song["im:artist"]?.label || "Global Artist";
+            const img = song["im:image"]?.[2]?.label || CATEGORY_FALLBACK_IMAGES.Musics;
+            newItems.push({
+              id: `billboard-${idx}-${Date.now()}`,
+              title: `#${idx + 1} Billboard Hot Single: "${title}" by ${artist}`,
+              excerpt: `"${title}" by ${artist} climbs to #${idx + 1} on the global Billboard & Apple Music Top 100 Singles charts.`,
+              fullBody: `Official chart update: "${title}" performed by ${artist} has achieved massive global streaming numbers across Spotify, Apple Music, and Billboard Hot 100 rankings.`,
+              category: "Musics",
+              subCategory: "Billboard Hot 100",
+              source: "Billboard Hot 100 API",
+              date: new Date(Date.now() - idx * 14400000).toISOString().slice(0, 10),
+              readTime: "2 min read",
+              imageUrl: img,
+              externalUrl: song.link?.[0]?.attributes?.href || "https://www.billboard.com/charts/hot-100/",
+              author: "Billboard Chart Wire",
+              commentsCount: 120 + idx * 5,
+              viewsCount: 9800 - idx * 200,
+              likesCount: 2400 - idx * 50,
+              isHotTrend: true,
+            });
+          });
+        }
+
+        // Parse Real Sports & Athletics API (TheSportsDB)
+        if (sportsRes.status === "fulfilled" && sportsRes.value.ok) {
+          const sportsData = await sportsRes.value.json();
+          const sports = sportsData?.sports || [];
+          sports.slice(0, 10).forEach((sport: any, idx: number) => {
+            newItems.push({
+              id: `sports-${sport.idSport || idx}`,
+              title: `${sport.strSport} World Championship — Global Athletics & Match Update`,
+              excerpt: `International ${sport.strSport} coverage: Latest league standouts, tournament finals, and world championship highlights.`,
+              fullBody: `${sport.strSport} global tournament report: ${sport.strSportDescription || "World athletics championship coverage across premier international leagues and tournaments."}`,
+              category: "Games",
+              subCategory: "Real Sports & Athletics",
+              source: "TheSportsDB Global API",
+              date: new Date(Date.now() - idx * 18000000).toISOString().slice(0, 10),
+              readTime: "3 min read",
+              imageUrl: sport.strSportThumb || "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=800&auto=format&fit=crop",
+              externalUrl: "https://www.thesportsdb.com",
+              author: "Global Sports Wire",
+              commentsCount: 215,
+              viewsCount: 7800,
+              likesCount: 1950,
+              isHotTrend: true,
+            });
+          });
+        }
+
         if (newItems.length) {
           setNewsList((prev) => {
             const existingIds = new Set(prev.map((n) => n.id));
@@ -703,13 +867,16 @@ export default function NewsHomepage() {
     { id: "Movies & Series", label: "Movies & Series", icon: <FiTv /> },
     { id: "Musics", label: "Musics", icon: <FiMusic /> },
     { id: "Manga & Books", label: "Manga & Books", icon: <FiBookOpen /> },
+    { id: "Tech & Culture", label: "Tech & Culture", icon: <FiCpu /> },
   ];
+
+  const [feedFilter, setFeedFilter] = useState<"all" | "hot" | "viral">("all");
 
   // Active Sub-Categories for current Main Category
   const activeSubCategories = SUB_CATEGORIES_MAP[activeCategory];
 
-  // Filter Articles by Main Category, Sub-Category, and Search
-  const filteredNews = newsList.filter((item) => {
+  // Filter Articles by Main Category, Sub-Category, Search, and AI Feed Filter
+  let filteredNews = newsList.filter((item) => {
     const passesCategory = item.category === activeCategory;
     const passesSub =
       activeSubCategory.startsWith("All") ||
@@ -720,6 +887,12 @@ export default function NewsHomepage() {
       item.excerpt.toLowerCase().includes(search.trim().toLowerCase());
     return passesCategory && passesSub && passesSearch;
   });
+
+  if (feedFilter === "hot") {
+    filteredNews = [...filteredNews].sort((a, b) => b.viewsCount - a.viewsCount);
+  } else if (feedFilter === "viral") {
+    filteredNews = [...filteredNews].sort((a, b) => b.likesCount - a.likesCount);
+  }
 
   // Top Trending Articles for the ACTIVE Category
   const categoryTrendingNews = newsList
@@ -808,6 +981,43 @@ export default function NewsHomepage() {
 
         {/* MAIN CONTENT: Search, Trending Strip, & Article Feed */}
         <div className="workspace-content">
+          {/* AI Hot Trends & Feed Filter Selector */}
+          <div className="settings-card" style={{ marginBottom: "1rem", padding: "0.85rem 1.25rem" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.75rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <span className="auth-badge" style={{ fontSize: "0.78rem" }}>
+                  <FiZap style={{ marginRight: "4px" }} /> AI Daily Global Aggregator
+                </span>
+              </div>
+              <div className="badge-pill-list" style={{ gap: "0.5rem", margin: 0 }}>
+                <button
+                  type="button"
+                  className={feedFilter === "all" ? "workspace-link-nested active" : "workspace-link-nested"}
+                  onClick={() => setFeedFilter("all")}
+                  style={{ padding: "0.45rem 0.95rem", fontSize: "0.82rem" }}
+                >
+                  All Latest News
+                </button>
+                <button
+                  type="button"
+                  className={feedFilter === "hot" ? "workspace-link-nested active" : "workspace-link-nested"}
+                  onClick={() => setFeedFilter("hot")}
+                  style={{ padding: "0.45rem 0.95rem", fontSize: "0.82rem" }}
+                >
+                  🔥 Global Hot Topics
+                </button>
+                <button
+                  type="button"
+                  className={feedFilter === "viral" ? "workspace-link-nested active" : "workspace-link-nested"}
+                  onClick={() => setFeedFilter("viral")}
+                  style={{ padding: "0.45rem 0.95rem", fontSize: "0.82rem" }}
+                >
+                  ⚡ Viral Releases
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Search Bar */}
           <div className="settings-card" style={{ marginBottom: "1.25rem" }}>
             <div className="settings-field-group" style={{ position: "relative" }}>
