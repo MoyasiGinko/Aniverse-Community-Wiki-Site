@@ -608,13 +608,23 @@ body[data-theme="dark"] .alert-success {
   gap: 1.5rem;
   width: 100%;
   box-sizing: border-box;
-  transition: all 0.25s ease;
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.28s ease, box-shadow 0.28s ease;
+}
+
+.settings-card:hover {
+  border-color: rgba(240, 106, 17, 0.35);
+  box-shadow: 0 20px 45px -10px rgba(240, 106, 17, 0.12), 0 10px 25px -5px rgba(0, 0, 0, 0.08);
 }
 
 body[data-theme="dark"] .settings-card {
   background: rgba(18, 17, 36, 0.7);
   border-color: rgba(255, 255, 255, 0.08);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+}
+
+body[data-theme="dark"] .settings-card:hover {
+  border-color: rgba(255, 127, 49, 0.4);
+  box-shadow: 0 20px 50px -10px rgba(255, 127, 49, 0.18), 0 12px 30px -5px rgba(0, 0, 0, 0.5);
 }
 
 .settings-card.secondary {
@@ -1792,6 +1802,18 @@ body[data-theme="dark"] .profile-stat-card {
 .badge-achievement-info span {
   font-size: 0.78rem;
   color: var(--muted);
+}
+
+/* Hero Mascot Floating Keyframes */
+@keyframes mascotFloat {
+  0% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(1.8deg); }
+  100% { transform: translateY(0px) rotate(0deg); }
+}
+
+.hero-banner-mascot-img {
+  animation: mascotFloat 5s ease-in-out infinite;
+  filter: drop-shadow(0 15px 30px rgba(0, 0, 0, 0.3));
 }
 
 
