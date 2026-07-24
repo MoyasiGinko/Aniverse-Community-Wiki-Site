@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   FiSearch,
   FiBookOpen,
@@ -36,9 +36,8 @@ function colorFromTitle(value: string): string {
   return palette[Math.abs(hash) % palette.length];
 }
 
-/* Custom Glassmorphism Modal Selection Component */
+/* Custom Glassmorphism Inline Selection Dropdown */
 function CustomModalSelect<T extends string>({
-  title,
   options,
   value,
   onChange,
@@ -51,15 +50,26 @@ function CustomModalSelect<T extends string>({
   icon?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const selectedOption = options.find((o) => o.id === value) || options[0];
 
   return (
-    <>
+    <div ref={containerRef} style={{ position: "relative", width: "100%" }}>
       <button
         type="button"
         className="settings-input"
-        onClick={() => setOpen(true)}
+        onClick={() => setOpen((prev) => !prev)}
         style={{
           display: "flex",
           alignItems: "center",
@@ -74,106 +84,68 @@ function CustomModalSelect<T extends string>({
           {icon}
           {selectedOption.label}
         </span>
-        <FiChevronDown style={{ color: "var(--brand)" }} />
+        <FiChevronDown
+          style={{
+            color: "var(--brand)",
+            transform: open ? "rotate(180deg)" : "none",
+            transition: "transform 0.2s ease",
+          }}
+        />
       </button>
 
       {open ? (
         <div
+          className="fade-in-up"
           style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 9999,
+            position: "absolute",
+            top: "calc(100% + 6px)",
+            left: 0,
+            right: 0,
+            zIndex: 100,
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "16px",
+            boxShadow: "0 12px 36px rgba(0, 0, 0, 0.45)",
+            padding: "0.4rem",
             display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "1rem",
-            background: "rgba(0, 0, 0, 0.68)",
-            backdropFilter: "blur(14px)",
-            WebkitBackdropFilter: "blur(14px)",
-            animation: "fadeIn 0.2s ease-out",
+            flexDirection: "column",
+            gap: "0.25rem",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
           }}
-          onClick={() => setOpen(false)}
         >
-          <div
-            className="settings-card fade-in-up"
-            style={{
-              width: "100%",
-              maxWidth: "440px",
-              background: "var(--surface)",
-              border: "1px solid var(--border)",
-              borderRadius: "22px",
-              boxShadow: "0 20px 50px rgba(0, 0, 0, 0.5)",
-              padding: "1.5rem",
-              position: "relative",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div
+          {options.map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => {
+                onChange(opt.id);
+                setOpen(false);
+              }}
               style={{
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                paddingBottom: "1rem",
-                borderBottom: "1px solid var(--border)",
-                marginBottom: "1rem",
+                padding: "0.65rem 0.85rem",
+                borderRadius: "10px",
+                border: "none",
+                background: opt.id === value ? "rgba(240, 106, 17, 0.12)" : "transparent",
+                color: opt.id === value ? "var(--brand)" : "var(--text)",
+                fontWeight: opt.id === value ? 800 : 600,
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+                textAlign: "left",
+                width: "100%",
+                fontSize: "0.88rem",
               }}
             >
-              <h3
-                style={{
-                  fontSize: "1.1rem",
-                  fontWeight: 800,
-                  color: "var(--text)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.5rem",
-                  margin: 0,
-                }}
-              >
-                {icon} Select {title}
-              </h3>
-              <button
-                type="button"
-                className="action-button ghost small"
-                onClick={() => setOpen(false)}
-                style={{ padding: "0.4rem", borderRadius: "50%", minWidth: "32px" }}
-              >
-                <FiX />
-              </button>
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-              {options.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => {
-                    onChange(opt.id);
-                    setOpen(false);
-                  }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "0.85rem 1rem",
-                    borderRadius: "14px",
-                    border: opt.id === value ? "1.5px solid var(--brand)" : "1px solid var(--border)",
-                    background: opt.id === value ? "rgba(240, 106, 17, 0.12)" : "color-mix(in srgb, var(--surface) 92%, var(--surface-soft))",
-                    color: opt.id === value ? "var(--brand)" : "var(--text)",
-                    fontWeight: opt.id === value ? 800 : 600,
-                    cursor: "pointer",
-                    transition: "all 0.15s ease",
-                    textAlign: "left",
-                  }}
-                >
-                  <span style={{ fontSize: "0.95rem" }}>{opt.label}</span>
-                  {opt.id === value ? <FiCheckCircle style={{ color: "var(--brand)", fontSize: "1.1rem" }} /> : null}
-                </button>
-              ))}
-            </div>
-          </div>
+              <span>{opt.label}</span>
+              {opt.id === value ? <FiCheckCircle style={{ color: "var(--brand)" }} /> : null}
+            </button>
+          ))}
         </div>
       ) : null}
-    </>
+    </div>
   );
 }
 

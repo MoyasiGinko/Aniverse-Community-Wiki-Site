@@ -1403,6 +1403,11 @@ button.community-thread-stat {
   gap: var(--space-3);
 }
 
+.workspace-layout.three-column {
+  grid-template-columns: 240px 1fr 260px;
+}
+
+
 .workspace-sidebar {
   display: grid;
   align-content: start;
@@ -2603,7 +2608,8 @@ body[data-theme="dark"] .theme-toggle {
   .security-grid,
   .dashboard-grid,
   .auth-layout,
-  .workspace-layout {
+  .workspace-layout,
+  .workspace-layout.three-column {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -2663,7 +2669,8 @@ body[data-theme="dark"] .theme-toggle {
   .dashboard-grid,
   .auth-layout,
   .oauth-grid,
-  .workspace-layout {
+  .workspace-layout,
+  .workspace-layout.three-column {
     grid-template-columns: 1fr;
   }
 
@@ -3093,7 +3100,8 @@ body[data-theme="dark"] .theme-toggle {
   text-align: left;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 0.75rem;
   width: 100%;
   border: none;
   background: transparent;
