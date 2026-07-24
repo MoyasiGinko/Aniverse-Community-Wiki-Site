@@ -7,14 +7,79 @@
       "passwordHash": "",
       "provider": "local",
       "role": "admin",
-      "bio": "Aniverse admin account",
+      "bio": "Aniverse chief editor & anime lore preserver",
       "avatarUrl": "",
       "joinedAt": "2026-01-01T00:00:00.000Z"
     }
   ],
   "sessions": [],
   "watchlist": [],
-  "wiki": [],
+  "wiki": [
+    {
+      "id": "wiki-aot-rumbling",
+      "slug": "attack-on-titan-rumbling-lore",
+      "title": "The Rumbling & Origin of the Titans",
+      "body": "The Rumbling is a cataclysmic event in Attack on Titan involving the awakening of thousands of Wall Titans lining Paradis Island. Controlled by the Founding Titan, these colossal beings march across the globe, flattening all land and civilizations in their path. The origin traces back to Ymir Fritz, who bonded with the Source of All Living Matter 2,000 years prior to the main storyline.",
+      "tags": ["AOT", "Lore", "Paradis", "Titans"],
+      "status": "published",
+      "malAnimeId": 16498,
+      "malAnimeTitle": "Attack on Titan",
+      "coverImageUrl": "https://cdn.myanimelist.net/images/anime/10/47347.jpg",
+      "extraImageUrls": [
+        "https://cdn.myanimelist.net/images/anime/10/47347.jpg"
+      ],
+      "revision": 3,
+      "updatedAt": "2026-07-24T05:00:00.000Z"
+    },
+    {
+      "id": "wiki-ds-breathing",
+      "slug": "demon-slayer-breathing-styles",
+      "title": "Sun Breathing & Hashira Mastery",
+      "body": "Breathing Styles are swordsmanship techniques practiced and taught by the Demon Slayer Corps. Sun Breathing (Hinokami Kagura), developed by Yoriichi Tsugikuni, is the original and most powerful Breathing Style from which all other styles (Flame, Water, Wind, Stone, Thunder) were derived.",
+      "tags": ["DemonSlayer", "Swordsmanship", "Hashira", "SunBreathing"],
+      "status": "published",
+      "malAnimeId": 38000,
+      "malAnimeTitle": "Demon Slayer: Kimetsu no Yaiba",
+      "coverImageUrl": "https://cdn.myanimelist.net/images/anime/1286/99889.jpg",
+      "extraImageUrls": [
+        "https://cdn.myanimelist.net/images/anime/1286/99889.jpg"
+      ],
+      "revision": 2,
+      "updatedAt": "2026-07-24T04:30:00.000Z"
+    },
+    {
+      "id": "wiki-jjk-domain",
+      "slug": "jujutsu-kaisen-domain-expansion",
+      "title": "Domain Expansion & Limitless Cursed Energy",
+      "body": "Domain Expansion is an advanced cursed technique user capability in Jujutsu Kaisen. By expanding a domain using cursed energy, the sorcerer constructs a barrier space where their innate domain is manifested, granting guaranteed-hit attributes to their cursed techniques.",
+      "tags": ["JJK", "DomainExpansion", "SatoruGojo", "CursedEnergy"],
+      "status": "published",
+      "malAnimeId": 40748,
+      "malAnimeTitle": "Jujutsu Kaisen",
+      "coverImageUrl": "https://cdn.myanimelist.net/images/anime/1171/109222.jpg",
+      "extraImageUrls": [
+        "https://cdn.myanimelist.net/images/anime/1171/109222.jpg"
+      ],
+      "revision": 4,
+      "updatedAt": "2026-07-24T03:15:00.000Z"
+    },
+    {
+      "id": "wiki-op-void-century",
+      "slug": "one-piece-void-century",
+      "title": "The Void Century & Ancient Kingdom Poneglyphs",
+      "body": "The Void Century is a 100-year gap in recorded history in the One Piece world. The World Government strictly forbids studying this period, during which an Ancient Kingdom possessed immense technological advancement before being defeated by the 20 Founding Monarchs.",
+      "tags": ["OnePiece", "VoidCentury", "Poneglyphs", "JoyBoy"],
+      "status": "published",
+      "malAnimeId": 21,
+      "malAnimeTitle": "One Piece",
+      "coverImageUrl": "https://cdn.myanimelist.net/images/anime/6/73245.jpg",
+      "extraImageUrls": [
+        "https://cdn.myanimelist.net/images/anime/6/73245.jpg"
+      ],
+      "revision": 5,
+      "updatedAt": "2026-07-24T02:00:00.000Z"
+    }
+  ],
   "threads": [],
   "comments": [],
   "reports": []

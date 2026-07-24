@@ -4,6 +4,28 @@ import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { apiRequest } from "@/src/lib/apiClient";
 import TrendingThreads from "@/src/components/TrendingThreads";
+import {
+  FiArrowUp,
+  FiArrowDown,
+  FiMessageSquare,
+  FiBookmark,
+  FiShare2,
+  FiEye,
+  FiPlus,
+  FiSearch,
+  FiUsers,
+  FiTrendingUp,
+  FiMoreVertical,
+  FiCheckCircle,
+  FiX,
+  FiArrowRight,
+  FiArrowLeft,
+  FiLock,
+  FiGlobe,
+  FiImage,
+  FiShield,
+} from "react-icons/fi";
+import "@/src/styles/auth.css";
 
 type Community = {
   id: string;
@@ -43,85 +65,17 @@ type Thread = {
   userVote: 1 | -1 | 0;
 };
 
-const SHARE_COUNT_MODE = "event";
-
-function StatIcon({
-  kind,
-}: {
-  kind: "up" | "down" | "comment" | "view" | "save" | "share";
-}) {
-  if (kind === "up") {
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        aria-hidden="true"
-        className="community-stat-icon"
-      >
-        <path d="M12 5l6.5 8h-4.2V19H9.7v-6H5.5L12 5z" fill="currentColor" />
-      </svg>
-    );
-  }
-  if (kind === "down") {
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        aria-hidden="true"
-        className="community-stat-icon"
-      >
-        <path d="M12 19l-6.5-8h4.2V5h4.6v6h4.2L12 19z" fill="currentColor" />
-      </svg>
-    );
-  }
-  if (kind === "comment") {
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        aria-hidden="true"
-        className="community-stat-icon"
-      >
-        <path
-          d="M4 5h16v10H8l-4 4V5zm2 2v7.2L7.2 13H18V7H6z"
-          fill="currentColor"
-        />
-      </svg>
-    );
-  }
-  if (kind === "save") {
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        aria-hidden="true"
-        className="community-stat-icon"
-      >
-        <path
-          d="M6 4h10l2 2v14l-6-3-6 3V4zm2 2v10.8l4-2 4 2V6H8z"
-          fill="currentColor"
-        />
-      </svg>
-    );
-  }
-  if (kind === "share") {
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        aria-hidden="true"
-        className="community-stat-icon"
-      >
-        <path
-          d="M14 5l5 5-5 5v-3H9a4 4 0 00-4 4H3a6 6 0 016-6h5V5z"
-          fill="currentColor"
-        />
-      </svg>
-    );
-  }
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="community-stat-icon">
-      <path
-        d="M12 6c4.6 0 8.4 2.3 10 6-1.6 3.7-5.4 6-10 6S3.6 15.7 2 12c1.6-3.7 5.4-6 10-6zm0 2C8.6 8 5.6 9.6 4.2 12c1.4 2.4 4.4 4 7.8 4s6.4-1.6 7.8-4C18.4 9.6 15.4 8 12 8zm0 1.8a2.2 2.2 0 110 4.4 2.2 2.2 0 010-4.4z"
-        fill="currentColor"
-      />
-    </svg>
-  );
+function formatTimeAgo(isoString?: string): string {
+  if (!isoString) return "Recently";
+  const date = new Date(isoString);
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (seconds < 60) return `${Math.max(1, seconds)}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }
 
 export default function CommunitiesIndexPage() {
@@ -131,14 +85,28 @@ export default function CommunitiesIndexPage() {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [openThreadMenuId, setOpenThreadMenuId] = useState<string | null>(null);
 
-  // Create state
+  // Multi-step Create Wizard state
   const [showCreate, setShowCreate] = useState(false);
+  const [createStep, setCreateStep] = useState<number>(1);
   const [slug, setSlug] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(["Action & Shonen"]);
+  const [category, setCategory] = useState("Action & Shonen");
+  const [privacy, setPrivacy] = useState<"public" | "private">("public");
   const [iconUrl, setIconUrl] = useState("");
   const [bannerUrl, setBannerUrl] = useState("");
+
+  const toggleCategory = (catId: string) => {
+    setSelectedCategories((prev) => {
+      const next = prev.includes(catId)
+        ? prev.filter((c) => c !== catId)
+        : [...prev, catId];
+      const joined = next.length ? next.join(", ") : "General";
+      setCategory(joined);
+      return next;
+    });
+  };
 
   const [info, setInfo] = useState("");
   const [error, setError] = useState("");
@@ -147,14 +115,12 @@ export default function CommunitiesIndexPage() {
     try {
       const [communitiesData, threadsData] = await Promise.all([
         apiRequest<{ communities: Community[] }>("/api/communities"),
-        apiRequest<{ threads: Thread[] }>(
-          `/api/community/threads?shareMode=${SHARE_COUNT_MODE}`,
-        ),
+        apiRequest<{ threads: Thread[] }>("/api/community/threads"),
       ]);
-      setCommunities(communitiesData.communities);
-      setThreads(threadsData.threads);
-    } catch (err) {
-      setError((err as Error).message);
+      setCommunities(communitiesData.communities || []);
+      setThreads(threadsData.threads || []);
+    } catch {
+      // Fallback
     }
   };
 
@@ -162,388 +128,594 @@ export default function CommunitiesIndexPage() {
     loadData();
   }, []);
 
-  useEffect(() => {
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (target?.closest(".community-thread-menu-wrap")) {
-        return;
-      }
-      setOpenThreadMenuId(null);
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-    };
-  }, []);
-
-  const formatTimeAgo = (value?: string) => {
-    if (!value) return "just now";
-    const date = new Date(value).getTime();
-    if (Number.isNaN(date)) return "just now";
-
-    // eslint-disable-next-line react-hooks/purity
-    const seconds = Math.max(1, Math.floor((Date.now() - date) / 1000));
-    if (seconds < 60) return `${seconds}s ago`;
-
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-
-    const days = Math.floor(hours / 24);
-    if (days < 30) return `${days}d ago`;
-
-    const months = Math.floor(days / 30);
-    if (months < 12) return `${months}mo ago`;
-
-    const years = Math.floor(months / 12);
-    return `${years}y ago`;
-  };
-
-  const getThreadUrl = (threadPath: string) =>
-    `${window.location.origin}${threadPath}`;
-
-  const shareThread = async (thread: Thread) => {
-    const threadPath = thread.communityId
-      ? `/community/${communities.find((entry) => entry.id === thread.communityId)?.slug || "community"}/${thread.slug}`
-      : `/community/thread/${thread.id}`;
-    const url = getThreadUrl(threadPath);
+  const handleJoinToggle = async (community: Community) => {
     try {
-      if (navigator.share) {
-        await navigator.share({ title: thread.title, url });
-      } else {
-        await navigator.clipboard.writeText(url);
-      }
-
-      if (!thread.sharedByMe) {
-        setThreads((current) =>
-          current.map((item) =>
-            item.id === thread.id
-              ? {
-                  ...item,
-                  sharedByMe: true,
-                  stats: {
-                    ...item.stats,
-                    shares: item.stats.shares + 1,
-                  },
-                }
-              : item,
-          ),
-        );
-      }
-
-      try {
-        await apiRequest(
-          `/api/community/threads/${thread.id}/share?mode=${SHARE_COUNT_MODE}`,
-          {
-            method: "POST",
-          },
-        );
-      } catch {
-        // Ignore tracking failure: sharing already succeeded.
-      }
-
-      setInfo("Thread link copied/shared.");
-      setError("");
-    } catch {
-      // User might cancel native share; no error toast needed.
-    }
-  };
-
-  const toggleSaveThread = async (thread: Thread) => {
-    const nextSaved = !thread.savedByMe;
-
-    setThreads((current) =>
-      current.map((item) =>
-        item.id === thread.id
-          ? {
-              ...item,
-              savedByMe: nextSaved,
-              stats: {
-                ...item.stats,
-                saves: Math.max(0, item.stats.saves + (nextSaved ? 1 : -1)),
-              },
-            }
-          : item,
-      ),
-    );
-
-    try {
-      await apiRequest(`/api/community/threads/${thread.id}/save`, {
-        method: nextSaved ? "POST" : "DELETE",
+      await apiRequest(`/api/communities/${community.slug}/join`, {
+        method: "POST",
       });
-    } catch (err) {
-      setThreads((current) =>
-        current.map((item) =>
-          item.id === thread.id
+      setCommunities((prev) =>
+        prev.map((c) =>
+          c.id === community.id
             ? {
-                ...item,
-                savedByMe: thread.savedByMe,
-                stats: {
-                  ...item.stats,
-                  saves: thread.stats.saves,
-                },
+                ...c,
+                joined: !c.joined,
+                memberCount: c.joined ? c.memberCount - 1 : c.memberCount + 1,
               }
-            : item,
+            : c,
         ),
       );
+    } catch (err) {
       setError((err as Error).message);
     }
   };
 
-  const toggleVote = async (thread: Thread, value: 1 | -1) => {
-    const previousVote = thread.userVote || 0;
-    const nextVote = previousVote === value ? 0 : value;
-
-    setThreads((current) =>
-      current.map((item) => {
-        if (item.id !== thread.id) return item;
-
-        const upDelta = (nextVote === 1 ? 1 : 0) - (previousVote === 1 ? 1 : 0);
-        const downDelta =
-          (nextVote === -1 ? 1 : 0) - (previousVote === -1 ? 1 : 0);
-
-        return {
-          ...item,
-          userVote: nextVote,
-          stats: {
-            ...item.stats,
-            upvotes: Math.max(0, item.stats.upvotes + upDelta),
-            downvotes: Math.max(0, item.stats.downvotes + downDelta),
-          },
-        };
-      }),
-    );
-
-    try {
-      if (nextVote === 0) {
-        await apiRequest(`/api/community/threads/${thread.id}/vote`, {
-          method: "DELETE",
-        });
-      } else {
-        await apiRequest(`/api/community/threads/${thread.id}/vote`, {
-          method: "POST",
-          body: JSON.stringify({ value: nextVote }),
-        });
-      }
-    } catch (err) {
-      setThreads((current) =>
-        current.map((item) =>
-          item.id === thread.id
-            ? {
-                ...item,
-                userVote: previousVote,
-                stats: {
-                  ...item.stats,
-                  upvotes: thread.stats.upvotes,
-                  downvotes: thread.stats.downvotes,
-                },
-              }
-            : item,
-        ),
-      );
-      setError((err as Error).message);
-    }
-  };
-
-  const createCommunity = async (e: FormEvent) => {
+  const handleCreateCommunity = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
     setInfo("");
     try {
+      const payload = {
+        slug: slug.trim().toLowerCase(),
+        name,
+        description,
+        category,
+        iconUrl,
+        bannerUrl,
+      };
       await apiRequest("/api/communities", {
         method: "POST",
-        body: JSON.stringify({
-          slug,
-          name,
-          description,
-          category,
-          iconUrl,
-          bannerUrl,
-        }),
+        body: JSON.stringify(payload),
       });
+      setInfo("Community established successfully!");
+      setShowCreate(false);
       setSlug("");
       setName("");
       setDescription("");
       setCategory("");
       setIconUrl("");
       setBannerUrl("");
-      setShowCreate(false);
-      setInfo("Community perfectly created!");
-      await loadData();
+      loadData();
     } catch (err) {
       setError((err as Error).message);
     }
   };
 
-  const filteredCommunities = communities.filter(
-    (c) =>
-      c.name.toLowerCase().includes(search.trim().toLowerCase()) ||
-      c.slug.toLowerCase().includes(search.trim().toLowerCase()) ||
-      c.category.toLowerCase().includes(search.trim().toLowerCase()),
-  );
+  const toggleVote = async (thread: Thread, direction: 1 | -1) => {
+    const nextVote = thread.userVote === direction ? 0 : direction;
+    try {
+      const res = await apiRequest<{
+        stats: Thread["stats"];
+        userVote: 1 | -1 | 0;
+      }>(`/api/community/threads/${thread.id}/vote`, {
+        method: "POST",
+        body: JSON.stringify({ vote: nextVote }),
+      });
+      setThreads((prev) =>
+        prev.map((t) =>
+          t.id === thread.id
+            ? { ...t, stats: res.stats, userVote: res.userVote }
+            : t,
+        ),
+      );
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
 
-  const searchResults = search.trim() ? filteredCommunities.slice(0, 8) : [];
-  const topCommunities = communities.slice(0, 10);
-  const communityById = new Map(communities.map((c) => [c.id, c]));
+  const toggleSaveThread = async (thread: Thread) => {
+    try {
+      const res = await apiRequest<{ saved: boolean; stats: Thread["stats"] }>(
+        `/api/community/threads/${thread.id}/save`,
+        { method: "POST" },
+      );
+      setThreads((prev) =>
+        prev.map((t) =>
+          t.id === thread.id
+            ? { ...t, savedByMe: res.saved, stats: res.stats }
+            : t,
+        ),
+      );
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  const shareThread = async (thread: Thread) => {
+    const threadHref = thread.communityId
+      ? `/community/${communityById.get(thread.communityId)?.slug}/${thread.slug}`
+      : `/community/thread/${thread.id}`;
+    const fullUrl = `${window.location.origin}${threadHref}`;
+
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(fullUrl);
+      setInfo("Thread URL copied to clipboard!");
+    }
+
+    try {
+      const res = await apiRequest<{ shared: boolean; stats: Thread["stats"] }>(
+        `/api/community/threads/${thread.id}/share`,
+        { method: "POST" },
+      );
+      setThreads((prev) =>
+        prev.map((t) =>
+          t.id === thread.id
+            ? { ...t, sharedByMe: res.shared, stats: res.stats }
+            : t,
+        ),
+      );
+    } catch {
+      // Ignore
+    }
+  };
+
+  const communityById = new Map<string, Community>();
+  communities.forEach((c) => communityById.set(c.id, c));
+
+  const filteredCommunities = communities.filter((c) => {
+    const query = search.trim().toLowerCase();
+    if (!query) return true;
+    return (
+      c.name.toLowerCase().includes(query) ||
+      c.category.toLowerCase().includes(query) ||
+      c.description.toLowerCase().includes(query)
+    );
+  });
+
+  const topCommunities = [...communities]
+    .sort((a, b) => b.memberCount - a.memberCount)
+    .slice(0, 5);
 
   return (
-    <main className="feature-page wiki-fandom-page">
-      <section className="section-header fade-in-up">
-        <h1>Community Hub</h1>
-        <p>
-          Follow communities, track joined threads feed, and discover top spaces
-          across every interest.
-        </p>
-      </section>
+    <main className="feature-page relative overflow-hidden">
+      <div className="bg-glow-1"></div>
+      <div className="bg-glow-2"></div>
 
-      <div className="portal-toolbar fade-in-up community-search-toolbar">
-        <input
-          placeholder="Search communities..."
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setShowSearchResults(true);
-          }}
-          onFocus={() => setShowSearchResults(true)}
-          onBlur={() => {
-            setTimeout(() => setShowSearchResults(false), 120);
-          }}
-          style={{ width: "100%", maxWidth: "400px" }}
-        />
-        {showSearchResults && searchResults.length ? (
-          <div
-            className="section-block community-search-dropdown"
-            onMouseDown={(e) => {
-              // Keep focus from leaving the input before link click is processed.
-              e.preventDefault();
-            }}
-          >
-            {searchResults.map((community) => (
-              <Link
-                key={community.id}
-                href={`/community/${community.slug}`}
-                className="nav-link"
-                onClick={() => setShowSearchResults(false)}
-                style={{ display: "block", borderRadius: "10px" }}
-              >
-                <strong>{community.name}</strong>
-                <small
-                  style={{
-                    display: "block",
-                    marginTop: "0.15rem",
-                    color: "var(--muted)",
-                  }}
-                >
-                  {community.category} • {community.memberCount} members
-                </small>
-              </Link>
-            ))}
+      {/* Hero Workspace Banner */}
+      <section className="workspace-hero-banner relative z-10">
+        <div className="hero-banner-content">
+          <div className="auth-badge">
+            <span>⚡ Otaku Community Hub</span>
           </div>
-        ) : null}
-        {!showCreate ? (
-          <button
-            type="button"
-            className="action-button ghost"
-            onClick={() => setShowCreate(true)}
-          >
-            Create Community
-          </button>
-        ) : null}
-      </div>
+          <h1 className="hero-banner-title">
+            Explore Anime <span style={{ color: "var(--brand)" }}>Guilds & Feeds</span>
+          </h1>
+          <p className="hero-banner-desc">
+            Engage in community discussions, share series theories, vote on top threads, and join specialized anime fan guilds.
+          </p>
 
-      {info ? (
-        <p
-          className="success-text fade-in-up"
-          style={{ color: "var(--brand)", marginBottom: "1rem" }}
-        >
-          {info}
-        </p>
-      ) : null}
-      {error ? <p className="error-text fade-in-up">{error}</p> : null}
-
-      {showCreate ? (
-        <form
-          className="feature-form auth-form-grid fade-in-up"
-          onSubmit={createCommunity}
-          style={{ marginBottom: "2rem" }}
-        >
-          <h2>Form a New Guild</h2>
-
-          <label htmlFor="name">Community Name</label>
-          <input
-            id="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            placeholder="e.g. Elden Ring Fans"
-          />
-
-          <label htmlFor="slug">URL Slug (/community/slug)</label>
-          <input
-            id="slug"
-            value={slug}
-            onChange={(e) => setSlug(e.target.value)}
-            required
-            placeholder="elden-ring"
-          />
-
-          <label htmlFor="category">Category</label>
-          <input
-            id="category"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            required
-            placeholder="Gaming"
-          />
-
-          <label htmlFor="desc">Description</label>
-          <textarea
-            id="desc"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={3}
-            required
-            placeholder="What is this community about?"
-          />
-
-          <label htmlFor="icon-url">Community Logo URL</label>
-          <input
-            id="icon-url"
-            value={iconUrl}
-            onChange={(e) => setIconUrl(e.target.value)}
-            placeholder="https://example.com/logo.png"
-          />
-
-          <label htmlFor="banner-url">Community Cover URL</label>
-          <input
-            id="banner-url"
-            value={bannerUrl}
-            onChange={(e) => setBannerUrl(e.target.value)}
-            placeholder="https://example.com/cover.jpg"
-          />
-
-          <div className="inline-actions">
-            <button type="submit">Establish Community</button>
+          <div className="inline-actions" style={{ marginTop: "1rem" }}>
             <button
               type="button"
-              className="action-button ghost"
-              onClick={() => setShowCreate(false)}
+              className="action-button"
+              onClick={() => setShowCreate((prev) => !prev)}
             >
-              Cancel
+              <FiPlus style={{ marginRight: "6px" }} /> Establish New Guild
             </button>
           </div>
-        </form>
+        </div>
+
+        <div className="hero-banner-mascot-wrapper">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/peeking_ai_robot.png"
+            alt="Aniverse AI Assistant"
+            className="hero-banner-mascot-img"
+          />
+        </div>
+      </section>
+
+      {info ? <div className="alert-success relative z-10" style={{ marginBottom: "1rem" }}>✓ {info}</div> : null}
+      {error ? <div className="alert-error relative z-10" style={{ marginBottom: "1rem" }}>✕ {error}</div> : null}
+
+      {/* Search & Filter Bar */}
+      <section className="section-block relative z-10" style={{ marginBottom: "1.5rem" }}>
+        <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ position: "relative", flex: 1, minWidth: "260px" }}>
+            <input
+              type="text"
+              className="settings-input"
+              placeholder="Search anime guilds, categories, or discussions..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onFocus={() => setShowSearchResults(true)}
+              style={{ paddingLeft: "2.5rem" }}
+            />
+            <FiSearch style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)", color: "var(--muted)" }} />
+          </div>
+        </div>
+
+        {showSearchResults && search.trim() ? (
+          <div className="settings-card" style={{ marginTop: "0.75rem", padding: "1rem" }}>
+            <h3 style={{ fontSize: "0.9rem", fontWeight: 800, marginBottom: "0.5rem" }}>Guild Search Results</h3>
+            {filteredCommunities.length ? (
+              <div className="security-grid">
+                {filteredCommunities.map((community) => (
+                  <Link key={community.id} href={`/community/${community.slug}`} className="community-item-card">
+                    <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      <FiUsers style={{ color: "var(--brand)" }} /> {community.name}
+                    </span>
+                    <span className="settings-input-helper">{community.memberCount} members</span>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="settings-input-helper">No communities matching &quot;{search}&quot;</p>
+            )}
+          </div>
+        ) : null}
+      </section>
+
+      {/* Creation 5-Step Wizard Modal Form */}
+      {showCreate ? (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "1rem",
+            background: "rgba(0, 0, 0, 0.68)",
+            backdropFilter: "blur(14px)",
+            WebkitBackdropFilter: "blur(14px)",
+            animation: "fadeIn 0.2s ease-out",
+          }}
+          onClick={() => setShowCreate(false)}
+        >
+          <div
+            className="settings-card fade-in-up"
+            style={{
+              width: "100%",
+              maxWidth: "640px",
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: "24px",
+              boxShadow: "0 25px 60px rgba(0, 0, 0, 0.5)",
+              padding: "1.75rem",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              position: "relative",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Top Header */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingBottom: "1rem",
+                borderBottom: "1px solid var(--border)",
+                marginBottom: "1rem",
+              }}
+            >
+              <div>
+                <h2
+                  style={{
+                    fontSize: "1.2rem",
+                    fontWeight: 900,
+                    color: "var(--text)",
+                    margin: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                  }}
+                >
+                  <FiPlus style={{ color: "var(--brand)" }} /> Establish Anime Guild
+                </h2>
+                <p className="settings-input-helper" style={{ margin: "0.25rem 0 0" }}>
+                  Step {createStep} of 5 · Customize your anime community space
+                </p>
+              </div>
+              <button
+                type="button"
+                className="action-button ghost small"
+                onClick={() => {
+                  setShowCreate(false);
+                  setCreateStep(1);
+                }}
+                style={{ padding: "0.4rem", borderRadius: "50%", minWidth: "32px" }}
+              >
+                <FiX />
+              </button>
+            </div>
+
+            {/* Progress Bar Header */}
+            <div style={{ width: "100%", height: "6px", background: "var(--border)", borderRadius: "10px", marginBottom: "1.5rem", overflow: "hidden" }}>
+              <div
+                style={{
+                  height: "100%",
+                  width: `${(createStep / 5) * 100}%`,
+                  background: "linear-gradient(90deg, var(--brand), #f97316)",
+                  borderRadius: "10px",
+                  transition: "width 0.3s ease",
+                }}
+              />
+            </div>
+
+            <form onSubmit={handleCreateCommunity} className="settings-form-grid">
+              {/* STEP 1: CATEGORY SELECTION */}
+              {createStep === 1 ? (
+                <div className="fade-in-up">
+                  <h3 style={{ fontSize: "1.05rem", fontWeight: 800, marginBottom: "0.5rem" }}>
+                    1. Choose Guild Category
+                  </h3>
+                  <p className="settings-input-helper" style={{ marginBottom: "1rem" }}>
+                    Select the primary anime genre or lore topic for your guild.
+                  </p>
+
+                  <div className="security-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "0.75rem" }}>
+                    {[
+                      { id: "Action & Shonen", label: "⚔️ Action & Shonen" },
+                      { id: "Fantasy & Magic", label: "🔮 Fantasy & Magic" },
+                      { id: "Slice of Life & Romance", label: "🌸 Romance & Drama" },
+                      { id: "Lore & Theories", label: "🧠 Lore & Theories" },
+                      { id: "Mecha & Sci-Fi", label: "🤖 Mecha & Sci-Fi" },
+                      { id: "Isekai & Reincarnation", label: "🌀 Isekai & Reincarnation" },
+                      { id: "Supernatural & Horror", label: "👻 Supernatural & Horror" },
+                      { id: "Sports & Competition", label: "⚽ Sports & Competition" },
+                      { id: "Mystery & Psychological", label: "🕵️ Mystery & Psychological" },
+                      { id: "Music & Idol", label: "🎵 Music & Idol" },
+                      { id: "Gaming & Esports", label: "🎮 Gaming & Esports" },
+                      { id: "Historical & Samurai", label: "⏳ Historical & Samurai" },
+                      { id: "Comedy & Parody", label: "😂 Comedy & Parody" },
+                      { id: "Manga & Light Novels", label: "🎨 Manga & Light Novels" },
+                    ].map((item) => {
+                      const isSelected = selectedCategories.includes(item.id);
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => toggleCategory(item.id)}
+                          style={{
+                            padding: "0.85rem",
+                            borderRadius: "14px",
+                            border: isSelected ? "1.5px solid var(--brand)" : "1px solid var(--border)",
+                            background: isSelected ? "rgba(240, 106, 17, 0.12)" : "color-mix(in srgb, var(--surface) 92%, var(--surface-soft))",
+                            color: isSelected ? "var(--brand)" : "var(--text)",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            textAlign: "left",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                          }}
+                        >
+                          <span>{item.label}</span>
+                          {isSelected ? <FiCheckCircle style={{ color: "var(--brand)", fontSize: "1.1rem" }} /> : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div style={{ marginTop: "1rem" }}>
+                    <label className="settings-label">Or Custom Category</label>
+                    <input
+                      className="settings-input"
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                      placeholder="e.g. Isekai, Cyberpunk, Music..."
+                      required
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              {/* STEP 2: NAME & URL SLUG */}
+              {createStep === 2 ? (
+                <div className="fade-in-up">
+                  <h3 style={{ fontSize: "1.05rem", fontWeight: 800, marginBottom: "0.5rem" }}>
+                    2. Guild Name & URL Slug
+                  </h3>
+                  <p className="settings-input-helper" style={{ marginBottom: "1rem" }}>
+                    Give your community a memorable name and custom URL address.
+                  </p>
+
+                  <div className="settings-field-group" style={{ marginBottom: "1rem" }}>
+                    <label className="settings-label">Guild Name</label>
+                    <input
+                      className="settings-input"
+                      value={name}
+                      onChange={(e) => {
+                        setName(e.target.value);
+                        if (!slug) {
+                          setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""));
+                        }
+                      }}
+                      placeholder="e.g. Shingeki No Kyojin Fans"
+                      required
+                    />
+                  </div>
+
+                  <div className="settings-field-group">
+                    <label className="settings-label">URL Slug</label>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      <span className="settings-input-helper" style={{ fontSize: "0.85rem", fontWeight: 700 }}>/community/</span>
+                      <input
+                        className="settings-input"
+                        value={slug}
+                        onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+                        placeholder="attack-on-titan"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* STEP 3: PRIVACY & ACCESS */}
+              {createStep === 3 ? (
+                <div className="fade-in-up">
+                  <h3 style={{ fontSize: "1.05rem", fontWeight: 800, marginBottom: "0.5rem" }}>
+                    3. Privacy & Access Settings
+                  </h3>
+                  <p className="settings-input-helper" style={{ marginBottom: "1rem" }}>
+                    Choose who can join and view discussions in this guild.
+                  </p>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+                    <button
+                      type="button"
+                      onClick={() => setPrivacy("public")}
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: "0.85rem",
+                        padding: "1rem",
+                        borderRadius: "16px",
+                        border: privacy === "public" ? "1.5px solid var(--brand)" : "1px solid var(--border)",
+                        background: privacy === "public" ? "rgba(240, 106, 17, 0.12)" : "color-mix(in srgb, var(--surface) 92%, var(--surface-soft))",
+                        textAlign: "left",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <FiGlobe style={{ fontSize: "1.3rem", color: "var(--brand)", marginTop: "2px" }} />
+                      <div>
+                        <strong style={{ fontSize: "0.98rem", color: "var(--text)", display: "block" }}>Public Guild</strong>
+                        <p className="settings-input-helper" style={{ margin: "0.2rem 0 0" }}>Anyone on Aniverse can view threads, join the community, and participate.</p>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setPrivacy("private")}
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: "0.85rem",
+                        padding: "1rem",
+                        borderRadius: "16px",
+                        border: privacy === "private" ? "1.5px solid var(--brand)" : "1px solid var(--border)",
+                        background: privacy === "private" ? "rgba(240, 106, 17, 0.12)" : "color-mix(in srgb, var(--surface) 92%, var(--surface-soft))",
+                        textAlign: "left",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <FiLock style={{ fontSize: "1.3rem", color: "var(--brand)", marginTop: "2px" }} />
+                      <div>
+                        <strong style={{ fontSize: "0.98rem", color: "var(--text)", display: "block" }}>Private Guild</strong>
+                        <p className="settings-input-helper" style={{ margin: "0.2rem 0 0" }}>Only approved members can view topics or submit discussion threads.</p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* STEP 4: DESCRIPTION & BIO */}
+              {createStep === 4 ? (
+                <div className="fade-in-up">
+                  <h3 style={{ fontSize: "1.05rem", fontWeight: 800, marginBottom: "0.5rem" }}>
+                    4. Guild Purpose & Description
+                  </h3>
+                  <p className="settings-input-helper" style={{ marginBottom: "1rem" }}>
+                    Describe what members can expect in this anime community.
+                  </p>
+
+                  <div className="settings-field-group">
+                    <label className="settings-label">Guild Description</label>
+                    <textarea
+                      className="settings-textarea"
+                      rows={5}
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Welcome to our anime guild! We discuss episode breakdowns, manga theories, and character lore..."
+                      required
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              {/* STEP 5: BRANDING & PREVIEW */}
+              {createStep === 5 ? (
+                <div className="fade-in-up">
+                  <h3 style={{ fontSize: "1.05rem", fontWeight: 800, marginBottom: "0.5rem" }}>
+                    5. Guild Branding & Media
+                  </h3>
+                  <p className="settings-input-helper" style={{ marginBottom: "1rem" }}>
+                    Add a custom logo and banner header image.
+                  </p>
+
+                  <div className="settings-field-row" style={{ marginBottom: "1rem" }}>
+                    <div className="settings-field-group">
+                      <label className="settings-label">Logo Image URL</label>
+                      <input
+                        className="settings-input"
+                        value={iconUrl}
+                        onChange={(e) => setIconUrl(e.target.value)}
+                        placeholder="https://example.com/logo.png"
+                      />
+                    </div>
+                    <div className="settings-field-group">
+                      <label className="settings-label">Banner Image URL</label>
+                      <input
+                        className="settings-input"
+                        value={bannerUrl}
+                        onChange={(e) => setBannerUrl(e.target.value)}
+                        placeholder="https://example.com/banner.png"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Live Guild Badge Card Preview */}
+                  <div className="bio-quote-box" style={{ marginTop: "1rem" }}>
+                    <strong style={{ fontSize: "0.85rem", color: "var(--brand)" }}>Live Guild Card Preview:</strong>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginTop: "0.5rem" }}>
+                      {iconUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={iconUrl} alt="Logo preview" style={{ width: "42px", height: "42px", borderRadius: "50%", objectFit: "cover" }} />
+                      ) : (
+                        <div style={{ width: "42px", height: "42px", borderRadius: "50%", background: "var(--brand)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold" }}>
+                          {(name || "G").charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div>
+                        <h4 style={{ margin: 0, fontSize: "0.95rem", color: "var(--text)" }}>{name || "Guild Name"}</h4>
+                        <p className="settings-input-helper" style={{ margin: "0.1rem 0 0" }}>{category} · {privacy} access</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Wizard Step Navigation Footer */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1.5rem", paddingTop: "1rem", borderTop: "1px solid var(--border)" }}>
+                <button
+                  type="button"
+                  className="action-button ghost"
+                  disabled={createStep === 1}
+                  onClick={() => setCreateStep((prev) => Math.max(1, prev - 1))}
+                >
+                  <FiArrowLeft style={{ marginRight: "4px" }} /> Back
+                </button>
+
+                {createStep < 5 ? (
+                  <button
+                    type="button"
+                    className="action-button"
+                    disabled={createStep === 2 && (!name.trim() || !slug.trim())}
+                    onClick={() => setCreateStep((prev) => Math.min(5, prev + 1))}
+                  >
+                    Next Step <FiArrowRight style={{ marginLeft: "4px" }} />
+                  </button>
+                ) : (
+                  <button type="submit" className="action-button">
+                    <FiCheckCircle style={{ marginRight: "6px" }} /> Establish Anime Guild
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+        </div>
       ) : null}
 
-      <section className="fade-in-up community-hub-grid">
-        <div className="section-block portal-card list-panel">
+      {/* Main Community Hub Grid */}
+      <section className="workspace-layout relative z-10">
+        <div className="workspace-content">
           {!threads.length ? (
-            <p className="meta-line">
-              No threads yet from communities you joined/follow.
-            </p>
+            <div className="settings-card">
+              <p className="settings-input-helper">No community threads published yet. Be the first to start a conversation!</p>
+            </div>
           ) : (
             <ul className="community-feed-list">
               {threads.map((thread) => {
@@ -559,6 +731,7 @@ export default function CommunitiesIndexPage() {
                       <div className="community-thread-meta">
                         <div className="community-thread-identity">
                           {community?.iconUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={community.iconUrl}
                               alt={`${community.name} logo`}
@@ -579,11 +752,11 @@ export default function CommunitiesIndexPage() {
                               </Link>
                             ) : (
                               <span className="community-thread-community">
-                                General
+                                General Discussion
                               </span>
                             )}
                             <span className="community-thread-author-name">
-                              by {thread.author?.username || "Unknown user"}
+                              by @{thread.author?.username || "member"}
                             </span>
                           </div>
                         </div>
@@ -604,18 +777,11 @@ export default function CommunitiesIndexPage() {
                               )
                             }
                           >
-                            <span
-                              className="community-thread-menu-dots"
-                              aria-hidden="true"
-                            >
-                              <span></span>
-                              <span></span>
-                              <span></span>
-                            </span>
+                            <FiMoreVertical />
                           </button>
                           {openThreadMenuId === thread.id ? (
                             <div className="community-thread-menu-dropdown">
-                              <Link href={threadHref}>Open</Link>
+                              <Link href={threadHref}>Open Thread</Link>
                               <button
                                 type="button"
                                 onClick={() => {
@@ -623,9 +789,8 @@ export default function CommunitiesIndexPage() {
                                   setOpenThreadMenuId(null);
                                 }}
                               >
-                                Share
+                                Share Link
                               </button>
-                              <button type="button">Report</button>
                             </div>
                           ) : null}
                         </div>
@@ -645,6 +810,7 @@ export default function CommunitiesIndexPage() {
                     {thread.imageUrls?.length ? (
                       <div className="community-thread-preview-grid">
                         {thread.imageUrls.slice(0, 3).map((url) => (
+                          // eslint-disable-next-line @next/next/no-img-element
                           <img
                             key={`${thread.id}-${url}`}
                             src={url}
@@ -655,51 +821,46 @@ export default function CommunitiesIndexPage() {
                       </div>
                     ) : null}
 
-                    {thread.imageUrls?.length ? (
-                      <small className="community-thread-attachments">
-                        {thread.imageUrls.length} attachment
-                        {thread.imageUrls.length > 1 ? "s" : ""}
-                      </small>
-                    ) : null}
-
+                    {/* Stats Action Row */}
                     <div className="community-thread-stats-row">
                       <button
                         type="button"
                         className={`community-thread-stat ${thread.userVote === 1 ? "is-active" : ""}`}
-                        aria-label={`Upvote thread (${thread.stats.upvotes} upvotes)`}
                         onClick={() => toggleVote(thread, 1)}
                       >
-                        <StatIcon kind="up" /> {thread.stats.upvotes}
+                        <FiArrowUp /> {thread.stats.upvotes}
                       </button>
+
                       <button
                         type="button"
                         className={`community-thread-stat ${thread.userVote === -1 ? "is-active" : ""}`}
-                        aria-label={`Downvote thread (${thread.stats.downvotes} downvotes)`}
                         onClick={() => toggleVote(thread, -1)}
                       >
-                        <StatIcon kind="down" /> {thread.stats.downvotes}
+                        <FiArrowDown /> {thread.stats.downvotes}
                       </button>
+
                       <span className="community-thread-stat">
-                        <StatIcon kind="comment" /> {thread.stats.comments}
+                        <FiMessageSquare /> {thread.stats.comments}
                       </span>
+
                       <button
                         type="button"
                         className={`community-thread-save ${thread.savedByMe ? "is-active" : ""}`}
-                        aria-label={`Save thread (${thread.stats.saves} saves)`}
                         onClick={() => toggleSaveThread(thread)}
                       >
-                        <StatIcon kind="save" /> {thread.stats.saves}
+                        <FiBookmark /> {thread.stats.saves}
                       </button>
+
                       <button
                         type="button"
                         className="community-thread-share"
-                        aria-label={`Share thread (${thread.stats.shares} shares)`}
                         onClick={() => shareThread(thread)}
                       >
-                        <StatIcon kind="share" /> {thread.stats.shares}
+                        <FiShare2 /> {thread.stats.shares}
                       </button>
+
                       <span className="community-thread-stat community-thread-views">
-                        <StatIcon kind="view" /> {thread.stats.views}
+                        <FiEye /> {thread.stats.views}
                       </span>
                     </div>
                   </li>
@@ -709,42 +870,35 @@ export default function CommunitiesIndexPage() {
           )}
         </div>
 
-        <aside className="section-block portal-card community-top-sidebar">
-          <h2 style={{ marginBottom: "0.75rem" }}>Top Communities</h2>
-          <ul className="community-sidebar-list">
+        {/* Top Guilds Sidebar */}
+        <aside className="workspace-sidebar section-block">
+          <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <FiTrendingUp style={{ color: "var(--brand)" }} /> Top Anime Guilds
+          </h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginTop: "0.75rem" }}>
             {topCommunities.map((community) => (
-              <li key={community.id} className="community-sidebar-item">
-                <Link
-                  href={`/community/${community.slug}`}
-                  className="community-sidebar-link"
-                >
-                  <div className="community-sidebar-title-row">
-                    {community.iconUrl ? (
-                      <img
-                        src={community.iconUrl}
-                        alt={`${community.name} logo`}
-                        className="community-sidebar-logo"
-                      />
-                    ) : (
-                      <div className="community-sidebar-logo community-sidebar-logo-fallback">
-                        {community.name.charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    <strong>{community.name}</strong>
-                  </div>
-                  <small className="community-sidebar-meta">
-                    {community.category} • {community.memberCount} members
-                  </small>
-                  <p className="community-sidebar-description">
-                    {community.description.length > 90
-                      ? `${community.description.slice(0, 90)}...`
-                      : community.description || "No description yet."}
-                  </p>
-                </Link>
-              </li>
+              <div key={community.id} className="session-item-row" style={{ flexDirection: "column", alignItems: "stretch", gap: "0.5rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <Link href={`/community/${community.slug}`} style={{ textDecoration: "none", fontWeight: 800, color: "var(--text)" }}>
+                    {community.name}
+                  </Link>
+                  <button
+                    type="button"
+                    className="action-button ghost small"
+                    onClick={() => handleJoinToggle(community)}
+                  >
+                    {community.joined ? "Joined" : "Join"}
+                  </button>
+                </div>
+                <p className="settings-input-helper">{community.description.slice(0, 80)}...</p>
+                <small className="settings-input-helper">{community.memberCount} members · {community.category}</small>
+              </div>
             ))}
-          </ul>
-          <TrendingThreads />
+          </div>
+
+          <div style={{ marginTop: "1.5rem" }}>
+            <TrendingThreads />
+          </div>
         </aside>
       </section>
     </main>

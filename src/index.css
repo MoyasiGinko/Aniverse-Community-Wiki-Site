@@ -3055,43 +3055,64 @@ body[data-theme="dark"] .theme-toggle {
   opacity: 0;
   visibility: hidden;
   position: absolute;
-  top: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%) translateY(-10px);
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  width: 100%;
   min-width: 190px;
   padding: 0.5rem;
   border-radius: 16px;
   border: 1px solid var(--border);
   background: var(--surface);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
   z-index: 1000;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: none;
+  transition: opacity 0.15s ease, visibility 0.15s ease;
 }
 
-.nav-dropdown:hover .nav-dropdown-menu {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(-50%) translateY(0);
+.nav-dropdown:hover .nav-dropdown-menu,
+.nav-dropdown-menu.open {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: flex !important;
+  transform: none !important;
 }
 
+.account-dropdown-item,
+.nav-dropdown-menu button,
 .nav-dropdown-menu a {
   padding: 0.6rem 0.9rem;
   border-radius: 10px;
   font-size: 0.88rem;
   font-weight: 600;
-  color: var(--muted) !important;
+  color: var(--text) !important;
   transition: all 0.2s ease;
   text-align: left;
-  display: block;
-  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  box-sizing: border-box;
 }
 
+.account-dropdown-item:hover,
+.nav-dropdown-menu button:hover,
 .nav-dropdown-menu a:hover {
-  background: color-mix(in srgb, var(--surface-soft) 80%, var(--brand) 8%);
-  color: var(--brand) !important;
+  background: color-mix(in srgb, var(--brand) 16%, var(--surface)) !important;
+  color: var(--brand-strong) !important;
+}
+
+body[data-theme="dark"] .account-dropdown-item:hover,
+body[data-theme="dark"] .nav-dropdown-menu button:hover,
+body[data-theme="dark"] .nav-dropdown-menu a:hover {
+  background: rgba(240, 106, 17, 0.22) !important;
+  color: #ffffff !important;
 }
 
 .dropdown-arrow {

@@ -49,6 +49,20 @@ type CurrentUser = {
   role: string;
 };
 
+import {
+  FiArrowUp,
+  FiArrowDown,
+  FiMessageSquare,
+  FiBookmark,
+  FiShare2,
+  FiEye,
+  FiUsers,
+  FiPlus,
+  FiMoreVertical,
+  FiCheckCircle,
+} from "react-icons/fi";
+import "@/src/styles/auth.css";
+
 const SHARE_COUNT_MODE = "event";
 
 function StatIcon({
@@ -56,78 +70,12 @@ function StatIcon({
 }: {
   kind: "up" | "down" | "comment" | "view" | "save" | "share";
 }) {
-  if (kind === "up") {
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        aria-hidden="true"
-        className="community-stat-icon"
-      >
-        <path d="M12 5l6.5 8h-4.2V19H9.7v-6H5.5L12 5z" fill="currentColor" />
-      </svg>
-    );
-  }
-  if (kind === "down") {
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        aria-hidden="true"
-        className="community-stat-icon"
-      >
-        <path d="M12 19l-6.5-8h4.2V5h4.6v6h4.2L12 19z" fill="currentColor" />
-      </svg>
-    );
-  }
-  if (kind === "comment") {
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        aria-hidden="true"
-        className="community-stat-icon"
-      >
-        <path
-          d="M4 5h16v10H8l-4 4V5zm2 2v7.2L7.2 13H18V7H6z"
-          fill="currentColor"
-        />
-      </svg>
-    );
-  }
-  if (kind === "save") {
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        aria-hidden="true"
-        className="community-stat-icon"
-      >
-        <path
-          d="M6 4h10l2 2v14l-6-3-6 3V4zm2 2v10.8l4-2 4 2V6H8z"
-          fill="currentColor"
-        />
-      </svg>
-    );
-  }
-  if (kind === "share") {
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        aria-hidden="true"
-        className="community-stat-icon"
-      >
-        <path
-          d="M14 5l5 5-5 5v-3H9a4 4 0 00-4 4H3a6 6 0 016-6h5V5z"
-          fill="currentColor"
-        />
-      </svg>
-    );
-  }
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="community-stat-icon">
-      <path
-        d="M12 6c4.6 0 8.4 2.3 10 6-1.6 3.7-5.4 6-10 6S3.6 15.7 2 12c1.6-3.7 5.4-6 10-6zm0 2C8.6 8 5.6 9.6 4.2 12c1.4 2.4 4.4 4 7.8 4s6.4-1.6 7.8-4C18.4 9.6 15.4 8 12 8zm0 1.8a2.2 2.2 0 110 4.4 2.2 2.2 0 010-4.4z"
-        fill="currentColor"
-      />
-    </svg>
-  );
+  if (kind === "up") return <FiArrowUp className="community-stat-icon" />;
+  if (kind === "down") return <FiArrowDown className="community-stat-icon" />;
+  if (kind === "comment") return <FiMessageSquare className="community-stat-icon" />;
+  if (kind === "save") return <FiBookmark className="community-stat-icon" />;
+  if (kind === "share") return <FiShare2 className="community-stat-icon" />;
+  return <FiEye className="community-stat-icon" />;
 }
 
 export default function CommunitySlugPage() {
