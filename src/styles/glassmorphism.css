@@ -1,17 +1,16 @@
-/* css variables for glassmorphism and modern dark theme, appended for new domains */
 :root {
-  --primary-color: #e50914; /* Netflix red */
-  --bg-color-dark: #0f1014;
-  --bg-color-dark-glass: rgba(15, 16, 20, 0.7);
-  --border-glass: rgba(255, 255, 255, 0.1);
+  --primary-color: #f59e0b; /* Golden Amber */
+  --bg-color-dark: #000000; /* Pure Deep Pitch Black */
+  --bg-color-dark-glass: rgba(0, 0, 0, 0.9);
+  --border-glass: rgba(255, 255, 255, 0.08);
   --text-primary: #ffffff;
   --text-secondary: #a1a1aa;
 }
 
 [data-theme='dark'] {
-  --background: var(--bg-color-dark);
+  --background: #000000;
   --foreground: var(--text-primary);
-  background-color: var(--background);
+  background-color: #000000 !important;
   color: var(--foreground);
 }
 
